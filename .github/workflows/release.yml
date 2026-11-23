@@ -28,4 +28,4 @@ jobs:
           notes=$(sed -e "s/@GAME_VERSION@/$GAME_VERSION/g" -e "s/@UE4SS_VERSION@/$UE4SS_VERSION/g" .github/release-template.md)
           gh release create "$GITHUB_REF_NAME" BadBadMod.zip \
             --verify-tag --generate-notes --notes "$notes" \
-            --title "BadBad Mod $GITHUB_REF_NAME — Queen's Domain $GAME_VERSION"
+            --title "$GITHUB_REF_NAME — Queen's Domain $GAME_VERSION"
