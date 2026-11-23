@@ -91,6 +91,39 @@ hooks.Tick(ref(hud))
 assert(hud.CompassWidget.RenderTransform.Translation.X == -30)
 assert(cam.bConstrainAspectRatio)
 
+do
+    local component = obj({ Applied = true, EffectName = { ToString = function() return "Poison" end } })
+    local player = obj({
+        StatusEffectComps = { ForEach = function(_, visit) visit(1, ref(component)) end },
+        StickyEffectApplied = true, MagicFireEffectLogic = obj({ CurrentMagicFireDamagePool = 3 }),
+    })
+    local root = obj({ AddChildToCanvas = function()
+        local noop = function() end
+        return { SetAutoSize = noop, SetAnchors = noop, SetAlignment = noop, SetPosition = noop, SetZOrder = noop }
+    end })
+    local effectsHud = obj({ Root = root, CharRef = player })
+    local effectsLabel
+    B.widget = function()
+        local noop = function() end
+        effectsLabel = obj({ Font = {}, SetFont = noop, SetShadowOffset = noop, SetShadowColorAndOpacity = noop,
+            SetText = function(self, text) self.text = text end,
+            SetVisibility = function(self, visibility) self.visibility = visibility end })
+        return effectsLabel
+    end
+    module("statusnames", B)
+    hooks.Tick(ref(effectsHud))
+    assert(effectsLabel.text == "Burn\nPoison\nSticky" and effectsLabel.visibility == 3)
+    component.Applied = false
+    player.MagicFireEffectLogic.CurrentMagicFireDamagePool = 0
+    now = now + 1
+    hooks.Tick(ref(effectsHud))
+    assert(effectsLabel.text == "Sticky")
+    player.StickyEffectApplied = false
+    now = now + 1
+    hooks.Tick(ref(effectsHud))
+    assert(effectsLabel.visibility == 1)
+end
+
 local config = obj({ HealingHerb1HealAmount = 20, BerserkFruitDamageIncrease = 0.2, BaseDamage = 10 })
 B.dir = "Scripts\\"
 B.lib = function()
@@ -442,8 +475,8 @@ local testResult, testError = pcall(function()
     assert(B.config.drag and not B.config.graphics and not B.config.inventoryStats)
     hooks.Open(ref(page))
     hooks.Open(ref(page))
-    assert(#rows == 7)
-    local selector = rows[7].MyControl
+    assert(#rows == 8)
+    local selector = rows[#rows].MyControl
     assert(selector.text == "Low" and selector.ApplyOptionSettings == false)
     selector.CurrentValue = 2
     selector:Refreshtext()

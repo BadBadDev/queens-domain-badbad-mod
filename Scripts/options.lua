@@ -8,6 +8,7 @@ local features = {
     { "drag", "Drag to equip" },
     { "itemStats", "Item description stats" },
     { "inventoryStats", "Inventory healing stat" },
+    { "statusNames", "Status effect names" },
 }
 local saved, known = {}, {}
 for _, feature in ipairs(features) do
