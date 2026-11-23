@@ -1,6 +1,6 @@
 # BadBad Mod (BBM) for Queen's Domain
 
-**Tested loader:** [UE4SS v4.0.0 for Windows](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.0.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -36,8 +36,7 @@ To edit settings with the game closed:
 
 1. Download [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) (`UE4SS_v4.0.0.zip`).
 2. Extract `dwmapi.dll` and the `ue4ss` folder into `QueensDomain\Binaries\Win64`, beside `QueensDomain-Win64-Shipping.exe`. If v4.0.0 is already installed, skip this step.
-3. From the mod ZIP, copy the `BadBadMod` folder into `ue4ss\Mods`. If updating, replace files, but keep your `features.ini` if you want to preserve your switches.
-   If installing from a GitHub checkout instead, copy `Scripts`, `features.ini`, and `enabled.txt` into `ue4ss\Mods\BadBadMod`.
+3. Download [BadBadMod.zip from the latest release](https://github.com/BadBadDev/queens-domain-badbad-mod/releases/latest/download/BadBadMod.zip) and extract it into `ue4ss\Mods`. If updating, keep your `features.ini` to preserve your switches.
 4. Keep the bundled `BadBadMod\enabled.txt` file, or add `BadBadMod : 1` in `ue4ss\Mods\mods.txt`. Either method enables the mod. Launch the game and look for the settings under **Options > Video**.
 
 To uninstall, delete the `BadBadMod` folder.

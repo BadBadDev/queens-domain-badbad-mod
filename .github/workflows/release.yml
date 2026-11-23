@@ -1,0 +1,31 @@
+name: Publish mod release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GAME_VERSION: '1.01.07'
+      UE4SS_VERSION: '4.0.0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Package the installable mod
+        run: git archive --format=zip --prefix=BadBadMod/ --output=BadBadMod.zip HEAD -- Scripts enabled.txt features.ini README.md
+
+      - name: Publish the ZIP on GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=$(sed -e "s/@GAME_VERSION@/$GAME_VERSION/g" -e "s/@UE4SS_VERSION@/$UE4SS_VERSION/g" .github/release-template.md)
+          gh release create "$GITHUB_REF_NAME" BadBadMod.zip \
+            --verify-tag --generate-notes --notes "$notes" \
+            --title "BadBad Mod $GITHUB_REF_NAME — Queen's Domain $GAME_VERSION"
