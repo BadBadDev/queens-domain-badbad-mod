@@ -1,6 +1,6 @@
 # BadBad Mod (BBM) for Queen's Domain
 
-**v1.0.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.1.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
