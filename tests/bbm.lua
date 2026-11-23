@@ -428,10 +428,8 @@ local damageLabel = damageLabels[1]
 assert(hpLabels[1].layer.layout == bar.Fill.Slot.LayoutData)
 assert(damageLabel.anchors.Maximum.X == 1 and damageLabel.anchors.Maximum.Y == 0)
 assert(damageLabel.alignment.X == 1 and damageLabel.alignment.Y == 1)
-assert(
-    damageLabel.position.Y < -bar.BarPadding.Top - bar.EnemyName:GetDesiredSize().Y
-        and damageLabel.position.X <= 0
-)
+local nameLineTop = -bar.BarPadding.Top - bar.EnemyName:GetDesiredSize().Y
+assert(damageLabel.position.Y == nameLineTop and damageLabel.position.X <= 0)
 now = now + 0.5
 bar.CurrentHP = 58
 hooks.Damaged(ref(bar), ref(58))

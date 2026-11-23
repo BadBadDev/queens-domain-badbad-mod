@@ -221,7 +221,7 @@ local function refreshLastHitReadout(bar, source, size)
     -- The name's measured line height can change after the first layout or a target switch.
     local clearance = bar.BarPadding.Top + bar.EnemyName:GetDesiredSize().Y
     if clearance ~= label.clearance then
-        label.Slot:SetPosition({ X = 0, Y = -clearance - 3 })
+        label.Slot:SetPosition({ X = 0, Y = -clearance })
         label.clearance = clearance
     end
     setReadoutVisibility(label, true)
