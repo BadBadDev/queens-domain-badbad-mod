@@ -8,5 +8,3 @@ files["Scripts/**/*.lua"].read_globals = {
     "RegisterInitGameStatePostHook", "RegisterLoadMapPreHook",
     "StaticConstructObject", "StaticFindObject",
 }
-
-files["tests/bbm.lua"].globals = { "FText", "StaticConstructObject", "StaticFindObject", "os.clock" }

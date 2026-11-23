@@ -48,7 +48,7 @@ To uninstall, delete the `BadBadMod` folder.
 - [monsterhealthbar.lua](Scripts/monsterhealthbar.lua) draws player HP and the enemy/boss HP and damage readouts.
 - [iteminfo.lua](Scripts/iteminfo.lua) builds inventory widgets; [itemstats.lua](Scripts/itemstats.lua) calculates and formats the values they display.
 
-Pull requests run a Lua 5.4 syntax check, Luacheck, StyLua in check-only mode, and the regression suite. These checks don't require the game or UE4SS.
+Pull requests run a Lua 5.4 syntax check, Luacheck, StyLua in check-only mode, and [automated Lua tests](tests/bbm.lua). Run all tests from the repository root with `lua5.4 tests/bbm.lua`, or run a single feature test, such as `lua5.4 tests/widescreen.lua`. No game or UE4SS installation is needed.
 
 ## TODO (not yet implemented)
 

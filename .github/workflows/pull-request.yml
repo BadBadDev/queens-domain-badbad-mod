@@ -33,5 +33,5 @@ jobs:
       - name: Check formatting
         run: npm exec --yes --package=@johnnymorganz/stylua-bin@2.6.0 -- stylua --check Scripts tests
 
-      - name: Run regression tests
+      - name: Run automated Lua tests
         run: lua5.4 tests/bbm.lua
