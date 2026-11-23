@@ -8,7 +8,7 @@
 | --- | --- |
 | **Graphics** | Native resolution, temporal anti-aliasing and 16x anisotropic filtering, without retro pixel filtering or dithering. Your saved video preferences stay intact. |
 | **Pickup shimmer** | **Low** gives nearby items a subtle pulse; **Medium** strengthens it; **High** adds a short, pale-gold beam. |
-| **HP and damage numbers** | Bars show current/max HP. The last hit flashes above the right edge of enemy and boss bars. Turning damage numbers off leaves HP visible. |
+| **HP and damage numbers** | Bars show current/max HP. Above enemy and boss bars, the name stays on the left and the last hit flashes on the right of the same row. |
 | **Drag to equip** | In **Status & Inventory**, drag a weapon, throwable or charm onto a compatible slot. Normal equip rules and click controls still apply. |
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |

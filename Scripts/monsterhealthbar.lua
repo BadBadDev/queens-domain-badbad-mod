@@ -193,7 +193,58 @@ local function trackEnemyHpLoss(bar, hp)
     end
 end
 
-local function refreshLastHitReadout(bar, source, size)
+local function createNameRowDamageLabel(bar, size)
+    local name = bar.EnemyName
+    local header = name:GetParent()
+    local row = B.widget(bar, "HorizontalBox")
+    local fit = B.widget(bar, "ScaleBox")
+    local text = createHealthTextBlock(bar, name, size)
+    text:SetJustification(2)
+
+    -- Keep the actual game-owned text widget so renames and localizations still work.
+    header:SetContent(row)
+    header:SetHorizontalAlignment(0)
+    fit:SetStretch(2) -- ScaleToFit
+    fit:SetStretchDirection(1) -- DownOnly
+    local nameSlot = fit:AddChild(name)
+    nameSlot:SetHorizontalAlignment(1) -- left
+    nameSlot:SetVerticalAlignment(2)
+    local left = row:AddChildToHorizontalBox(fit)
+    left:SetSize({ SizeRule = 1, Value = 1 }) -- reserve the hit's natural width first
+    local right = row:AddChildToHorizontalBox(text)
+    right:SetVerticalAlignment(2)
+    right:SetPadding({ Left = 4, Top = 0, Right = 0, Bottom = 0 })
+    return { Text = text, Header = header, Shown = true }
+end
+
+local function setNameRowExpanded(label, expanded)
+    local slot = label.Header.Slot
+    if expanded == (label.Original ~= nil) then
+        return
+    end
+    local anchors, offsets = slot:GetAnchors(), slot:GetOffsets()
+    if expanded then
+        label.Original = { autoSize = slot:GetAutoSize(), maxX = anchors.Maximum.X, right = offsets.Right }
+    end
+    local original = label.Original
+    -- Change only horizontal layout. Keep the game's name position and height.
+    slot:SetAutoSize(not expanded and original.autoSize)
+    slot:SetAnchors({
+        Minimum = { X = anchors.Minimum.X, Y = anchors.Minimum.Y },
+        Maximum = { X = expanded and 1 or original.maxX, Y = anchors.Maximum.Y },
+    })
+    slot:SetOffsets({
+        Left = offsets.Left,
+        Top = offsets.Top,
+        Right = expanded and label.Header.RenderTransform.Translation.X or original.right,
+        Bottom = offsets.Bottom,
+    })
+    if not expanded then
+        label.Original = nil
+    end
+end
+
+local function refreshLastHitReadout(bar, size)
     if not Valid(bar) then
         return
     end
@@ -203,27 +254,15 @@ local function refreshLastHitReadout(bar, source, size)
         Hits[id] = nil
         if label and Valid(label.Text) then
             setReadoutVisibility(label, false)
+            setNameRowExpanded(label, false)
         end
         return
     end
     if not label or not Valid(label.Text) then
-        local t = createHealthTextBlock(bar, source, size)
-        t:SetJustification(2) -- right
-        local slot = bar.HealthBar:AddChildToCanvas(t)
-        slot:SetAutoSize(true)
-        slot:SetAnchors({ Minimum = { X = 1, Y = 0 }, Maximum = { X = 1, Y = 0 } })
-        slot:SetAlignment({ X = 1, Y = 1 })
-        slot:SetZOrder(101)
-        bar.EnemyName:ForceLayoutPrepass()
-        label = { Text = t, Slot = slot, Shown = true }
+        label = createNameRowDamageLabel(bar, size)
         HitLabels[id] = label
     end
-    -- The name's measured line height can change after the first layout or a target switch.
-    local clearance = bar.BarPadding.Top + bar.EnemyName:GetDesiredSize().Y
-    if clearance ~= label.clearance then
-        label.Slot:SetPosition({ X = 0, Y = -clearance })
-        label.clearance = clearance
-    end
+    setNameRowExpanded(label, true)
     setReadoutVisibility(label, true)
     updateLabelText(label, hit.text)
     -- Give identical consecutive hits a visible restart without moving the baseline.
@@ -325,8 +364,8 @@ local function updateHealthReadouts(Context)
         if Valid(EnemyBar) then
             trackEnemyHpLoss(EnemyBar, EnemyBar.CurrentHP)
         end
-        refreshLastHitReadout(EnemyBar, FontSource, Config.EnemySize)
-        refreshLastHitReadout(BossBar, FontSource, Config.BossSize)
+        refreshLastHitReadout(EnemyBar, Config.EnemySize)
+        refreshLastHitReadout(BossBar, Config.BossSize)
     end
     updateMonsterHpText(EnemyBar, FontSource, Config.EnemySize)
     updateMonsterHpText(BossBar, FontSource, Config.BossSize)

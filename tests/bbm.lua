@@ -333,17 +333,34 @@ assert(
 print("PASS: item modifiers use player-facing labels, signed bonuses and correct units")
 
 local damageLabels, hpLabels = {}, {}
+local nameRow, nameFit
 StaticFindObject = function()
     return obj()
 end
 local function noop() end
 B.widget = function(_, kind)
+    if kind == "HorizontalBox" then
+        nameRow = obj({
+            children = {},
+            AddChildToHorizontalBox = function(row, child)
+                row.children[#row.children + 1] = child
+                if #row.children == 2 then
+                    damageLabels[#damageLabels + 1] = child
+                end
+                return { SetSize = noop, SetVerticalAlignment = noop, SetPadding = noop }
+            end,
+        })
+        return nameRow
+    end
     if kind == "ScaleBox" then
         return obj({
             SetStretch = noop,
             SetStretchDirection = noop,
             AddChild = function(box, t)
                 box.text = t
+                if t.GetParent then
+                    nameFit = box
+                end
                 return {
                     SetHorizontalAlignment = function(_, v)
                         t.align = v
@@ -357,13 +374,43 @@ B.widget = function(_, kind)
     return obj({
         SetVisibility = noop,
         AddChildToOverlay = function(layer, box)
-            local labels = box.text.align == 3 and damageLabels or hpLabels
             box.text.layer = layer
-            labels[#labels + 1] = box.text
+            hpLabels[#hpLabels + 1] = box.text
             return { SetHorizontalAlignment = noop, SetVerticalAlignment = noop }
         end,
     })
 end
+local headerSlot = {
+    autoSize = true,
+    anchors = { Minimum = { X = 0, Y = 0.5 }, Maximum = { X = 0, Y = 0.5 } },
+    offsets = { Left = -12, Top = -43, Right = 96, Bottom = 29 },
+    GetAutoSize = function(s)
+        return s.autoSize
+    end,
+    SetAutoSize = function(s, v)
+        s.autoSize = v
+    end,
+    GetAnchors = function(s)
+        return s.anchors
+    end,
+    SetAnchors = function(s, v)
+        s.anchors = v
+    end,
+    GetOffsets = function(s)
+        return s.offsets
+    end,
+    SetOffsets = function(s, v)
+        s.offsets = v
+    end,
+}
+local header = obj({
+    Slot = headerSlot,
+    RenderTransform = { Translation = { X = 0, Y = 0 } },
+    SetContent = function(s, v)
+        s.content = v
+    end,
+    SetHorizontalAlignment = noop,
+})
 StaticConstructObject = function()
     return obj({
         SetJustification = noop,
@@ -386,33 +433,18 @@ local bar = obj({
     MaxHP = 100,
     BarPadding = { Top = 8 },
     EnemyName = obj({
-        ForceLayoutPrepass = noop,
-        GetDesiredSize = function()
-            return { X = 140, Y = 20 }
+        GetParent = function()
+            return header
         end,
     }),
     Fill = { Slot = { LayoutData = {} } },
     HealthBar = {
         AddChildToCanvas = function(_, layer)
             return {
-                SetAutoSize = noop,
-                SetAnchors = function(_, a)
-                    layer.anchors = a
-                end,
-                SetAlignment = function(_, a)
-                    layer.alignment = a
-                end,
-                SetPosition = function(_, p)
-                    layer.position = p
-                end,
                 SetLayout = function(_, v)
                     layer.layout = v
                 end,
-                SetZOrder = function()
-                    if layer.anchors then
-                        damageLabels[#damageLabels + 1] = layer
-                    end
-                end,
+                SetZOrder = noop,
             }
         end,
     },
@@ -426,10 +458,9 @@ hooks.Tick(combat)
 assert(#damageLabels == 1 and damageLabels[1].text == "-12")
 local damageLabel = damageLabels[1]
 assert(hpLabels[1].layer.layout == bar.Fill.Slot.LayoutData)
-assert(damageLabel.anchors.Maximum.X == 1 and damageLabel.anchors.Maximum.Y == 0)
-assert(damageLabel.alignment.X == 1 and damageLabel.alignment.Y == 1)
-local nameLineTop = -bar.BarPadding.Top - bar.EnemyName:GetDesiredSize().Y
-assert(damageLabel.position.Y == nameLineTop and damageLabel.position.X <= 0)
+assert(header.content == nameRow and nameRow.children[1] == nameFit and nameFit.text == bar.EnemyName)
+assert(nameRow.children[2] == damageLabel and headerSlot.anchors.Maximum.X == 1)
+assert(headerSlot.offsets.Top == -43 and headerSlot.offsets.Bottom == 29)
 now = now + 0.5
 bar.CurrentHP = 58
 hooks.Damaged(ref(bar), ref(58))
@@ -451,6 +482,7 @@ assert(damageLabels[1].text == "-4" and damageLabels[1].vis == 3)
 now = now + 1
 hooks.Tick(combat)
 assert(damageLabels[1].vis == 1)
+assert(headerSlot.autoSize and headerSlot.anchors.Maximum.X == 0 and headerSlot.offsets.Right == 96)
 print("PASS: ultrawide camera/HUD resize and restore; item stats and units; per-target damage and expiry")
 
 -- HP labels are unconditional; disabling damage skips both hit-event bindings.
