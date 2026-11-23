@@ -50,7 +50,7 @@ local function activeStatusText(player)
     return table.concat(names, "\n")
 end
 
-local function createStatusLabel(hud)
+local function createStatusLabel(hud, parent)
     local label = B.widget(hud, "TextBlock")
     local source = hud.InteractText
     if B.valid(source) then
@@ -61,13 +61,29 @@ local function createStatusLabel(hud)
     label:SetFont(font)
     label:SetShadowOffset({ X = 1, Y = 1 })
     label:SetShadowColorAndOpacity({ R = 0, G = 0, B = 0, A = 1 })
-    local slot = hud.Root:AddChildToCanvas(label)
+    local slot = parent:AddChildToCanvas(label)
     slot:SetAutoSize(true)
-    slot:SetAnchors({ Minimum = { X = 0, Y = 1 }, Maximum = { X = 0, Y = 1 } })
     slot:SetAlignment({ X = 0, Y = 1 })
-    slot:SetPosition({ X = 20, Y = -20 })
     slot:SetZOrder(100)
     return label
+end
+
+local function alignAboveUsableItem(label, icon)
+    -- Both slots share the native item's canvas. Leave its whole slot free, even
+    -- when there is no item equipped; additional names grow upward, not over it.
+    local iconSlot = icon.Slot
+    local position, size = iconSlot:GetPosition(), iconSlot:GetSize()
+    if iconSlot:GetAutoSize() then
+        size = icon:GetDesiredSize()
+    end
+    local alignment = iconSlot:GetAlignment()
+    local translation = icon.RenderTransform.Translation
+    local slot = label.Slot
+    slot:SetAnchors(iconSlot:GetAnchors())
+    slot:SetPosition({
+        X = position.X - size.X * alignment.X + translation.X,
+        Y = position.Y - size.Y * alignment.Y + translation.Y - 6,
+    })
 end
 
 local hudId, label, lastText
@@ -78,25 +94,35 @@ B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", function(context)
     end
     nextRead = os.clock() + 0.25
     local hud = context:get()
-    if not B.valid(hud.Root) then
-        return
-    end
     if hudId ~= hud:GetAddress() then
         hudId, label, lastText = hud:GetAddress(), nil, nil
     end
 
     local player = hud.CharRef
     local text = B.valid(player) and activeStatusText(player) or ""
-    if text == lastText then
-        return
-    end
     if text ~= "" then
-        if not B.valid(label) then
-            label = createStatusLabel(hud)
+        local icon = hud.ConsumableHUD
+        if not B.valid(icon) or not B.valid(icon:GetParent()) then
+            if B.valid(label) then
+                label:SetVisibility(1)
+            end
+            lastText = nil
+            return
         end
-        label:SetText(FText(text))
-        label:SetVisibility(3) -- HitTestInvisible
-    elseif B.valid(label) then
+        local parent = icon:GetParent()
+        if not B.valid(label) or not parent:HasChild(label) then
+            if B.valid(label) then
+                label:RemoveFromParent()
+            end
+            label = createStatusLabel(hud, parent)
+            lastText = nil
+        end
+        alignAboveUsableItem(label, icon)
+        if text ~= lastText then
+            label:SetText(FText(text))
+            label:SetVisibility(3) -- HitTestInvisible
+        end
+    elseif text ~= lastText and B.valid(label) then
         label:SetVisibility(1) -- Collapsed
     end
     lastText = text

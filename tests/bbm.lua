@@ -48,7 +48,7 @@ local function wing(x)
         end,
     })
 end
-local hud = obj({ StatusCluster = wing(8), CompassWidget = wing(-30) })
+local hud = obj({ StatusCluster = wing(8), CompassWidget = wing(-30), ConsumableHUD = wing(5) })
 local cam = obj({ bConstrainAspectRatio = true })
 local pawn = obj({
     FirstPersonCamera = cam,
@@ -81,16 +81,23 @@ assert(
         and hud.CompassWidget.RenderTransform.Translation.X == 290
 )
 assert(not cam.bConstrainAspectRatio)
+assert(hud.ConsumableHUD.RenderTransform.Translation.X == -315)
 cam.bConstrainAspectRatio = true
 hooks["Update Camera Aspect Ratio Options"](ref(pawn))
 assert(not cam.bConstrainAspectRatio)
 now = 2
 hooks.Tick(ref(hud))
 assert(hud.CompassWidget.RenderTransform.Translation.X == 290)
+assert(hud.ConsumableHUD.RenderTransform.Translation.X == -315)
+hud.ConsumableHUD = wing(12)
+now = now + 0.5
+hooks.Tick(ref(hud))
+assert(hud.ConsumableHUD.RenderTransform.Translation.X == -308)
 width = 1920
 now = 3
 hooks.Tick(ref(hud))
 assert(hud.CompassWidget.RenderTransform.Translation.X == -30)
+assert(hud.ConsumableHUD.RenderTransform.Translation.X == 12)
 assert(cam.bConstrainAspectRatio)
 
 do
@@ -134,19 +141,50 @@ do
         StickyEffectApplied = true,
         MagicFireEffectLogic = obj({ CurrentMagicFireDamagePool = 3 }),
     })
+    local anchor = { Minimum = { X = 0, Y = 1 }, Maximum = { X = 0, Y = 1 } }
+    local icon = wing(-200)
+    icon.Slot = {
+        GetPosition = function()
+            return { X = 50, Y = -20 }
+        end,
+        GetSize = function()
+            return { X = 200, Y = 100 }
+        end,
+        GetAutoSize = function()
+            return false
+        end,
+        GetAlignment = function()
+            return { X = 0, Y = 1 }
+        end,
+        GetAnchors = function()
+            return anchor
+        end,
+    }
     local root = obj({
-        AddChildToCanvas = function()
+        HasChild = function(self, child)
+            return self.child == child
+        end,
+        AddChildToCanvas = function(self, child)
             local noop = function() end
-            return {
+            self.child = child
+            child.Slot = {
                 SetAutoSize = noop,
-                SetAnchors = noop,
+                SetAnchors = function(slot, anchors)
+                    slot.anchors = anchors
+                end,
                 SetAlignment = noop,
-                SetPosition = noop,
+                SetPosition = function(slot, position)
+                    slot.position = position
+                end,
                 SetZOrder = noop,
             }
+            return child.Slot
         end,
     })
-    local effectsHud = obj({ Root = root, CharRef = player })
+    icon.GetParent = function()
+        return root
+    end
+    local effectsHud = obj({ ConsumableHUD = icon, CharRef = player })
     local effectsLabel
     B.widget = function()
         local noop = function() end
@@ -167,6 +205,12 @@ do
     module("statusnames", B)
     hooks.Tick(ref(effectsHud))
     assert(effectsLabel.text == "Burn\nPoison\nSticky" and effectsLabel.visibility == 3)
+    assert(effectsLabel.Slot.anchors == anchor and effectsLabel.Slot.position.X == -150)
+    assert(effectsLabel.Slot.position.Y < -20 - 100 + 15)
+    icon.RenderTransform.Translation.X = 0
+    now = now + 1
+    hooks.Tick(ref(effectsHud))
+    assert(effectsLabel.Slot.position.X == 50) -- reflow even when the effect names haven't changed
     component.Applied = false
     player.MagicFireEffectLogic.CurrentMagicFireDamagePool = 0
     now = now + 1
@@ -339,14 +383,35 @@ end
 local bar = obj({
     CurrentHP = 70,
     MaxHP = 100,
+    BarPadding = { Top = 8 },
+    EnemyName = obj({
+        ForceLayoutPrepass = noop,
+        GetDesiredSize = function()
+            return { X = 140, Y = 20 }
+        end,
+    }),
     Fill = { Slot = { LayoutData = {} } },
     HealthBar = {
         AddChildToCanvas = function(_, layer)
             return {
+                SetAutoSize = noop,
+                SetAnchors = function(_, a)
+                    layer.anchors = a
+                end,
+                SetAlignment = function(_, a)
+                    layer.alignment = a
+                end,
+                SetPosition = function(_, p)
+                    layer.position = p
+                end,
                 SetLayout = function(_, v)
                     layer.layout = v
                 end,
-                SetZOrder = noop,
+                SetZOrder = function()
+                    if layer.anchors then
+                        damageLabels[#damageLabels + 1] = layer
+                    end
+                end,
             }
         end,
     },
@@ -358,7 +423,14 @@ local combat = ref(obj({ EnemyStatusZone = obj({ EnemyHealthBar_base = bar }) })
 hooks.SetTarget(ref(bar), ref(target), ref(12))
 hooks.Tick(combat)
 assert(#damageLabels == 1 and damageLabels[1].text == "-12")
-assert(damageLabels[1].layer == hpLabels[1].layer and hpLabels[1].layer.layout == bar.Fill.Slot.LayoutData)
+local damageLabel = damageLabels[1]
+assert(hpLabels[1].layer.layout == bar.Fill.Slot.LayoutData)
+assert(damageLabel.anchors.Maximum.X == 1 and damageLabel.anchors.Maximum.Y == 0)
+assert(damageLabel.alignment.X == 1 and damageLabel.alignment.Y == 1)
+assert(
+    damageLabel.position.Y < -bar.BarPadding.Top - bar.EnemyName:GetDesiredSize().Y
+        and damageLabel.position.X <= 0
+)
 now = now + 0.5
 bar.CurrentHP = 58
 hooks.Damaged(ref(bar), ref(58))

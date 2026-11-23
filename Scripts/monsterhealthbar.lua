@@ -84,12 +84,12 @@ local function updateLabelText(Label, Value)
     Label.Text:SetText(FText(Value))
 end
 
-local function attachTextToBarLayer(bar, layer, text, alignment)
+local function centerHpTextInFill(bar, layer, text)
     local fit = B.widget(bar, "ScaleBox")
     fit:SetStretch(2) -- ScaleToFit: fit the full font line, including ascent and descent.
     fit:SetStretchDirection(1) -- DownOnly
     local content = fit:AddChild(text)
-    content:SetHorizontalAlignment(alignment)
+    content:SetHorizontalAlignment(2)
     content:SetVerticalAlignment(2)
     local slot = layer:AddChildToOverlay(fit)
     slot:SetHorizontalAlignment(0)
@@ -109,8 +109,8 @@ local function getOrCreateMonsterReadout(Bar, FontSource, Size)
     layerSlot:SetLayout(Bar.Fill.Slot.LayoutData)
     layerSlot:SetZOrder(100)
     local Text = createHealthTextBlock(Bar, FontSource, Size)
-    attachTextToBarLayer(Bar, layer, Text, 2) -- center
-    Label = { Text = Text, Layer = layer }
+    centerHpTextInFill(Bar, layer, Text)
+    Label = { Text = Text }
     Labels[Key] = Label
     return Label
 end
@@ -208,9 +208,21 @@ local function refreshLastHitReadout(bar, source, size)
     end
     if not label or not Valid(label.Text) then
         local t = createHealthTextBlock(bar, source, size)
-        attachTextToBarLayer(bar, getOrCreateMonsterReadout(bar, source, size).Layer, t, 3) -- right
-        label = { Text = t, Shown = true }
+        t:SetJustification(2) -- right
+        local slot = bar.HealthBar:AddChildToCanvas(t)
+        slot:SetAutoSize(true)
+        slot:SetAnchors({ Minimum = { X = 1, Y = 0 }, Maximum = { X = 1, Y = 0 } })
+        slot:SetAlignment({ X = 1, Y = 1 })
+        slot:SetZOrder(101)
+        bar.EnemyName:ForceLayoutPrepass()
+        label = { Text = t, Slot = slot, Shown = true }
         HitLabels[id] = label
+    end
+    -- The name's measured line height can change after the first layout or a target switch.
+    local clearance = bar.BarPadding.Top + bar.EnemyName:GetDesiredSize().Y
+    if clearance ~= label.clearance then
+        label.Slot:SetPosition({ X = 0, Y = -clearance - 3 })
+        label.clearance = clearance
     end
     setReadoutVisibility(label, true)
     updateLabelText(label, hit.text)

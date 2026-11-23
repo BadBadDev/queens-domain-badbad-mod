@@ -8,12 +8,12 @@
 | --- | --- |
 | **Graphics** | Native resolution, temporal anti-aliasing and 16x anisotropic filtering, without retro pixel filtering or dithering. Your saved video preferences stay intact. |
 | **Pickup shimmer** | **Low** gives nearby items a subtle pulse; **Medium** strengthens it; **High** adds a short, pale-gold beam. |
-| **HP and damage numbers** | Bars show current/max HP. The last hit flashes at the right of enemy and boss bars. Turning damage numbers off leaves HP visible. |
+| **HP and damage numbers** | Bars show current/max HP. The last hit flashes above the right edge of enemy and boss bars. Turning damage numbers off leaves HP visible. |
 | **Drag to equip** | In **Status & Inventory**, drag a weapon, throwable or charm onto a compatible slot. Normal equip rules and click controls still apply. |
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
-| **Status effect names** | Active effects appear in small text at the bottom left, alongside the game's colour cues. Names disappear as each effect ends. |
-| **Widescreen** | The camera and edge HUD adapt automatically. Screen-space status borders such as Poison expand to the edges on ultrawide; standard and narrower viewports keep the native layout. |
+| **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
+| **Widescreen** | The camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 
 ### Reading the numbers (Examples)
 

@@ -1,6 +1,7 @@
 -- Adapts the gameplay camera, edge HUD groups and status borders to the viewport aspect ratio.
 local B = ...
-local nextViewportCheck, trackedHudId, appliedEdgeOffset = 0, nil, 0
+local nextViewportCheck = 0
+local edgeOffsets = {}
 local originalAspectConstraint, trackedCameraId, isWide = nil, nil, false
 
 local function updateCameraAspectConstraint(pawn)
@@ -32,6 +33,21 @@ B.hook("/Game/Player/FS_PlayerChar.FS_PlayerChar_C:Update Camera Aspect Ratio Op
     end
 end)
 
+local function applyWidgetEdgeOffset(key, widget, offset)
+    if not B.valid(widget) then
+        return
+    end
+    local id = widget:GetAddress()
+    local last = edgeOffsets[key]
+    local previous = last and last.id == id and last.offset or 0
+    if math.abs(offset - previous) < 0.5 then
+        return
+    end
+    local translation = widget.RenderTransform.Translation
+    widget:SetRenderTranslation({ X = translation.X + offset - previous, Y = translation.Y })
+    edgeOffsets[key] = { id = id, offset = offset }
+end
+
 local function updateWidescreenHud(ctx)
     if os.clock() < nextViewportCheck then
         return
@@ -55,24 +71,9 @@ local function updateWidescreenHud(ctx)
     if isWide or trackedCameraId then
         updateCameraAspectConstraint(hud:GetOwningPlayerPawn())
     end
-    if trackedHudId ~= hud:GetAddress() then
-        trackedHudId, appliedEdgeOffset = hud:GetAddress(), 0
-    end
-    if math.abs(requiredEdgeOffset - appliedEdgeOffset) < 0.5 then
-        return
-    end
-    local status, compass = hud.StatusCluster, hud.CompassWidget
-    if not B.valid(status) or not B.valid(compass) then
-        return
-    end
-    -- Translate only the two edge groups, preserving stock anchors, padding and scale.
-    local function translateWidgetHorizontally(w, delta)
-        local t = w.RenderTransform.Translation
-        w:SetRenderTranslation({ X = t.X + delta, Y = t.Y })
-    end
-    translateWidgetHorizontally(status, appliedEdgeOffset - requiredEdgeOffset)
-    translateWidgetHorizontally(compass, requiredEdgeOffset - appliedEdgeOffset)
-    appliedEdgeOffset = requiredEdgeOffset
+    applyWidgetEdgeOffset("status", hud.StatusCluster, -requiredEdgeOffset)
+    applyWidgetEdgeOffset("usableItem", hud.ConsumableHUD, -requiredEdgeOffset)
+    applyWidgetEdgeOffset("compass", hud.CompassWidget, requiredEdgeOffset)
 end
 
 B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", updateWidescreenHud)
@@ -117,6 +118,6 @@ B.hook(
     fitStatusEffectBorder
 )
 table.insert(B.reset, function()
-    trackedHudId, appliedEdgeOffset, nextViewportCheck, trackedCameraId, isWide = nil, 0, 0, nil, false
+    edgeOffsets, nextViewportCheck, trackedCameraId, isWide = {}, 0, nil, false
     widgetLayoutLibrary = nil
 end)
