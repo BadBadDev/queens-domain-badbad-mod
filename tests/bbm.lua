@@ -1,7 +1,8 @@
 -- Exercises BBM's Lua feature logic using stand-ins for UE4SS and Unreal widgets.
--- Run from the repository root with Lua 5.4: lua tests\bbm.lua
+-- Run from the repository root with Lua 5.4: lua tests/bbm.lua
+local scriptsDir = "Scripts" .. package.config:sub(1, 1)
 local function module(name, api)
-    assert(loadfile("Scripts\\" .. name .. ".lua"))(api)
+    assert(loadfile(scriptsDir .. name .. ".lua"))(api)
 end
 local function obj(t)
     t = t or {}
@@ -224,10 +225,10 @@ do
 end
 
 local config = obj({ HealingHerb1HealAmount = 20, BerserkFruitDamageIncrease = 0.2, BaseDamage = 10 })
-B.dir = "Scripts\\"
+B.dir = scriptsDir
 B.lib = function()
     return {
-        GetPlayerConfig = function(_, w, out)
+        GetPlayerConfig = function(_, _, out)
             out.Config = config
         end,
         GetWeaponStats = function()
@@ -236,12 +237,12 @@ B.lib = function()
         GetDaggerStats = function()
             return obj({ CooldownTime = 5, DamageMult = 0.7 })
         end,
-        GetWeaponPrimaryAttackPower = function(_, i, o, b, p, t)
+        GetWeaponPrimaryAttackPower = function(_, _, _, b, p, t)
             b.BasePower = 1.5
             p.IncreaseFromLevel = 0.2
             t.TotalPower = 1.8
         end,
-        GetWeaponSecondaryAttackPower = function(_, i, o, b, p, t)
+        GetWeaponSecondaryAttackPower = function(_, _, _, b, p, t)
             b.BasePower = 3
             p.IncreaseFromLevel = 0.2
             t.TotalPower = 3.6
@@ -535,7 +536,7 @@ local env = setmetatable({
     end,
 }, { __index = _G })
 local function boot()
-    assert(loadfile("Scripts\\main.lua", "t", env))()
+    assert(loadfile(scriptsDir .. "main.lua", "t", env))()
 end
 boot()
 assert(captured.shimmer == "low")
@@ -569,19 +570,19 @@ local testResult, testError = pcall(function()
         return io.open(tmp, mode)
     end
     local sandbox = setmetatable({ io = { open = openTestIni } }, { __index = _G })
-    local features = assert(loadfile("Scripts\\options.lua", "t", sandbox))
-    local rows = {}
+    local features = assert(loadfile(scriptsDir .. "options.lua", "t", sandbox))
+    local optionRows = {}
     local slot = { SetPadding = noop, SetHorizontalAlignment = noop }
     local page = obj({
         GetOwningPlayer = noop,
         Vsync = { Slot = { Padding = {}, HorizontalAlignment = 0 } },
         OptionsList = obj({
             AddChild = function(_, child)
-                rows[#rows + 1] = child
+                optionRows[#optionRows + 1] = child
                 return slot
             end,
             HasChild = function(_, child)
-                for _, r in ipairs(rows) do
+                for _, r in ipairs(optionRows) do
                     if child == r then
                         return true
                     end
@@ -632,15 +633,15 @@ local testResult, testError = pcall(function()
     assert(B.config.drag and not B.config.graphics and not B.config.inventoryStats)
     hooks.Open(ref(page))
     hooks.Open(ref(page))
-    assert(#rows == 8)
-    local selector = rows[#rows].MyControl
+    assert(#optionRows == 8)
+    local selector = optionRows[#optionRows].MyControl
     assert(selector.text == "Low" and selector.ApplyOptionSettings == false)
     selector.CurrentValue = 2
     selector:Refreshtext()
     hooks.Tick(ref(page))
     assert(B.shimmer == "high" and readIni() == ini)
     local drag, damage
-    for _, row in ipairs(rows) do
+    for _, row in ipairs(optionRows) do
         if row.Name:find("Drag to equip", 1, true) then
             drag = row.MyControl
         end

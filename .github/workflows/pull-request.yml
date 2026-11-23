@@ -1,0 +1,37 @@
+name: Lua checks
+
+on: pull_request
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lua-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Lua 5.4 and Luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lua5.4 lua-check
+
+      - name: Compile-check every Lua file
+        shell: bash
+        run: find Scripts tests -type f -name '*.lua' -print0 | xargs -0 -r -n1 luac5.4 -p
+
+      - name: Lint
+        run: luacheck Scripts tests
+
+      - name: Check formatting
+        run: npm exec --yes --package=@johnnymorganz/stylua-bin@2.6.0 -- stylua --check Scripts tests
+
+      - name: Run regression tests
+        run: lua5.4 tests/bbm.lua
