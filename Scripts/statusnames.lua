@@ -1,5 +1,6 @@
 -- Lists active player effects in the gameplay HUD without changing their duration or visuals.
 local B = ...
+local ITEM_CLEARANCE = 18 -- HUD units above the usable-item slot
 
 local displayNames = {
     BerserkFruit = "Berserk",
@@ -82,7 +83,7 @@ local function alignAboveUsableItem(label, icon)
     slot:SetAnchors(iconSlot:GetAnchors())
     slot:SetPosition({
         X = position.X - size.X * alignment.X + translation.X,
-        Y = position.Y - size.Y * alignment.Y + translation.Y - 6,
+        Y = position.Y - size.Y * alignment.Y + translation.Y - ITEM_CLEARANCE,
     })
 end
 

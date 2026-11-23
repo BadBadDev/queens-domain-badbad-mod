@@ -206,7 +206,8 @@ do
     hooks.Tick(ref(effectsHud))
     assert(effectsLabel.text == "Burn\nPoison\nSticky" and effectsLabel.visibility == 3)
     assert(effectsLabel.Slot.anchors == anchor and effectsLabel.Slot.position.X == -150)
-    assert(effectsLabel.Slot.position.Y < -20 - 100 + 15)
+    local itemTop = -20 - 100 + 15
+    assert(itemTop - effectsLabel.Slot.position.Y >= 15, "leave one line of clearance above the usable item")
     icon.RenderTransform.Translation.X = 0
     now = now + 1
     hooks.Tick(ref(effectsHud))
