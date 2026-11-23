@@ -181,7 +181,7 @@ local items, byPath, live = {}, {}, {} -- list of entries, path -> entry, entrie
 local pending = {} -- from the BeginPlay hook, added on the next tick
 local classOk = {} -- class name -> "pickup", "pc" or false
 local cursor, liveStart, tickCount = 1, 1, 0
-local queued, hookFired, rescanAt = false, false, 2
+local hookFired, rescanAt = false, 2
 local nextFreshAt, nextFarAt, slowBuild = 0, 0, false
 local pcPath, pcRetryAt = nil, 0
 local START_DELAY_SECONDS, START_FALLBACK_SECONDS = 3, 60
@@ -361,7 +361,7 @@ local function attachMarkerComponent(a, which, z)
     return nil
 end
 
-local function createAccessibilityMarkers(e, a)
+local function createAccessibilityMarkers(a)
     -- A pickup that came with its own light or text is left alone, so the mod never changes the game's own parts.
     if findMarkerComponent(a, "light") or (cfg.Marker and findMarkerComponent(a, "marker")) then
         return false
@@ -402,7 +402,7 @@ local function updateAccessibilityMarkers(e, a, level, px, py)
             return
         end
         if not e.made then
-            if not createAccessibilityMarkers(e, a) then
+            if not createAccessibilityMarkers(a) then
                 e.noDeco = true
                 return
             end

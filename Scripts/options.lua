@@ -1,6 +1,6 @@
 -- Adds BBM controls to the Video menu and saves changes without touching the native system save.
 local B = ...
-local path = B.dir .. "..\\features.ini"
+local featuresPath = B.dir .. "..\\features.ini"
 local features = {
     { "graphics", "High-resolution graphics" },
     { "shimmer", "Pickup shimmer" },
@@ -8,6 +8,7 @@ local features = {
     { "drag", "Drag to equip" },
     { "itemStats", "Item description stats" },
     { "inventoryStats", "Inventory healing stat" },
+    { "statusNames", "Status effect names" },
 }
 local saved, known = {}, {}
 for _, feature in ipairs(features) do
@@ -32,7 +33,7 @@ local function parseFeatureSwitches(data)
     end
     return values, positions
 end
-local file, why = io.open(path, "rb")
+local file, why = io.open(featuresPath, "rb")
 if file then
     local data, err = file:read("*a")
     file:close()
@@ -53,7 +54,7 @@ for key, v in pairs(saved) do
 end
 
 local function saveFeatureSwitch(key, value)
-    local f, err = io.open(path, "r+b")
+    local f, err = io.open(featuresPath, "r+b")
     if not f then
         return nil, err
     end

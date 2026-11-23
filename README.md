@@ -1,6 +1,6 @@
 # BadBad Mod (BBM) for Queen's Domain
 
-**v1.0.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.1.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -8,11 +8,12 @@
 | --- | --- |
 | **Graphics** | Native resolution, temporal anti-aliasing and 16x anisotropic filtering, without retro pixel filtering or dithering. Your saved video preferences stay intact. |
 | **Pickup shimmer** | **Low** gives nearby items a subtle pulse; **Medium** strengthens it; **High** adds a short, pale-gold beam. |
-| **HP and damage numbers** | Bars show current/max HP. The last hit flashes at the right of enemy and boss bars. Turning damage numbers off leaves HP visible. |
+| **HP and damage numbers** | Bars show current/max HP. Above enemy and boss bars, the name stays on the left and the last hit flashes on the right of the same row. |
 | **Drag to equip** | In **Status & Inventory**, drag a weapon, throwable or charm onto a compatible slot. Normal equip rules and click controls still apply. |
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
-| **Widescreen** | The camera adapts automatically. HP, stamina and compass follow the viewport edges. |
+| **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
+| **Widescreen** | The camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 
 ### Reading the numbers (Examples)
 
@@ -47,9 +48,9 @@ To uninstall, delete the `BadBadMod` folder.
 - [monsterhealthbar.lua](Scripts/monsterhealthbar.lua) draws player HP and the enemy/boss HP and damage readouts.
 - [iteminfo.lua](Scripts/iteminfo.lua) builds inventory widgets; [itemstats.lua](Scripts/itemstats.lua) calculates and formats the values they display.
 
+Pull requests into `main` must pass **Lua quality gate**: Lua 5.4 syntax, Luacheck (no warnings or errors), StyLua formatting, and [automated Lua tests](tests/bbm.lua). Run all tests from the repository root with `lua5.4 tests/bbm.lua`, or a single feature test with `lua5.4 tests/widescreen.lua`. No game or UE4SS installation is needed.
+
 ## TODO (not yet implemented)
 
 - [ ] **Quick save:** verify what Alt+F4 saves and restores before reusing that routine without quitting.
-- [ ] **Status effect names:** show active effects in small text at the bottom left, alongside the colour cues.
-- [ ] **Widescreen status overlays:** compare full-width overlays with centered overlays that have rounded edges.
 - [ ] **Faster exploration:** check for a reliable combat flag before increasing out-of-combat running speed. Restore normal speed when combat starts.

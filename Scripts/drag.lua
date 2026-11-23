@@ -95,11 +95,11 @@ local function Valid(Object)
     return Ok and Result == true
 end
 
-local function IsSameObject(A, B)
-    if not Valid(A) or not Valid(B) then
+local function IsSameObject(first, second)
+    if not Valid(first) or not Valid(second) then
         return false
     end
-    return A:GetAddress() == B:GetAddress()
+    return first:GetAddress() == second:GetAddress()
 end
 
 local function Lib(Path)
@@ -790,8 +790,8 @@ local function PressedEntry(Menu)
     return Pressed
 end
 
-local function CursorDistance(A, B)
-    local DX, DY = A.X - B.X, A.Y - B.Y
+local function CursorDistance(first, second)
+    local DX, DY = first.X - second.X, first.Y - second.Y
     return math.sqrt(DX * DX + DY * DY)
 end
 
