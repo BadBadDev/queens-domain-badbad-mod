@@ -98,8 +98,12 @@ do
     local image = wing(0)
     image.RenderTransform.Scale = { X = 1, Y = 1 }
     image.Brush = { ImageSize = { X = 1920, Y = 1080 } }
-    image.GetParent = function() return box end
-    image.SetRenderScale = function(self, size) self.RenderTransform.Scale = size end
+    image.GetParent = function()
+        return box
+    end
+    image.SetRenderScale = function(self, size)
+        self.RenderTransform.Scale = size
+    end
     local overlay = ref(obj({ OverlayLayer = image }))
     local fit = hooks["/Game/Player/StatusEffectVisualizers/StatusEffectOverlay.StatusEffectOverlay_C:Tick"]
     width = 2560
@@ -115,22 +119,49 @@ do
 end
 
 do
-    local component = obj({ Applied = true, EffectName = { ToString = function() return "Poison" end } })
+    local effectName = {
+        ToString = function()
+            return "Poison"
+        end,
+    }
+    local component = obj({ Applied = true, EffectName = effectName })
     local player = obj({
-        StatusEffectComps = { ForEach = function(_, visit) visit(1, ref(component)) end },
-        StickyEffectApplied = true, MagicFireEffectLogic = obj({ CurrentMagicFireDamagePool = 3 }),
+        StatusEffectComps = {
+            ForEach = function(_, visit)
+                visit(1, ref(component))
+            end,
+        },
+        StickyEffectApplied = true,
+        MagicFireEffectLogic = obj({ CurrentMagicFireDamagePool = 3 }),
     })
-    local root = obj({ AddChildToCanvas = function()
-        local noop = function() end
-        return { SetAutoSize = noop, SetAnchors = noop, SetAlignment = noop, SetPosition = noop, SetZOrder = noop }
-    end })
+    local root = obj({
+        AddChildToCanvas = function()
+            local noop = function() end
+            return {
+                SetAutoSize = noop,
+                SetAnchors = noop,
+                SetAlignment = noop,
+                SetPosition = noop,
+                SetZOrder = noop,
+            }
+        end,
+    })
     local effectsHud = obj({ Root = root, CharRef = player })
     local effectsLabel
     B.widget = function()
         local noop = function() end
-        effectsLabel = obj({ Font = {}, SetFont = noop, SetShadowOffset = noop, SetShadowColorAndOpacity = noop,
-            SetText = function(self, text) self.text = text end,
-            SetVisibility = function(self, visibility) self.visibility = visibility end })
+        effectsLabel = obj({
+            Font = {},
+            SetFont = noop,
+            SetShadowOffset = noop,
+            SetShadowColorAndOpacity = noop,
+            SetText = function(self, text)
+                self.text = text
+            end,
+            SetVisibility = function(self, visibility)
+                self.visibility = visibility
+            end,
+        })
         return effectsLabel
     end
     module("statusnames", B)

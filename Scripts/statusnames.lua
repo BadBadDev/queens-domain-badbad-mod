@@ -2,10 +2,15 @@
 local B = ...
 
 local displayNames = {
-    BerserkFruit = "Berserk", BerserkPotion = "Berserk",
-    IronSkinFruit = "Ironskin", IronSkinPotion = "Ironskin",
-    MagicRotResist = "Magic Rot resistance", RadiantFruit = "Radiant",
-    B33Punch = "B33 Punch", CaputRing = "Caput Ring", b33sment = "B33sment",
+    BerserkFruit = "Berserk",
+    BerserkPotion = "Berserk",
+    IronSkinFruit = "Ironskin",
+    IronSkinPotion = "Ironskin",
+    MagicRotResist = "Magic Rot resistance",
+    RadiantFruit = "Radiant",
+    B33Punch = "B33 Punch",
+    CaputRing = "Caput Ring",
+    b33sment = "B33sment",
 }
 
 local function activeStatusText(player)
@@ -26,12 +31,20 @@ local function activeStatusText(player)
     end)
 
     -- These effects are tracked separately by the game's status screen.
-    if player.StickyEffectApplied then include("Sticky") end
-    if player.MagicPoisonEffectApplied then include("Magic Rot") end
+    if player.StickyEffectApplied then
+        include("Sticky")
+    end
+    if player.MagicPoisonEffectApplied then
+        include("Magic Rot")
+    end
     local fire = player.MagicFireEffectLogic
-    if B.valid(fire) and fire.CurrentMagicFireDamagePool > 0 then include("Burn") end
+    if B.valid(fire) and fire.CurrentMagicFireDamagePool > 0 then
+        include("Burn")
+    end
     local sword = player.FlyingSwordChargeLogic
-    if B.valid(sword) and #sword.DebuffAppliers > 0 then include("Gem Curse") end
+    if B.valid(sword) and #sword.DebuffAppliers > 0 then
+        include("Gem Curse")
+    end
 
     table.sort(names)
     return table.concat(names, "\n")
@@ -60,19 +73,27 @@ end
 local hudId, label, lastText
 local nextRead = 0
 B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", function(context)
-    if os.clock() < nextRead then return end
+    if os.clock() < nextRead then
+        return
+    end
     nextRead = os.clock() + 0.25
     local hud = context:get()
-    if not B.valid(hud.Root) then return end
+    if not B.valid(hud.Root) then
+        return
+    end
     if hudId ~= hud:GetAddress() then
         hudId, label, lastText = hud:GetAddress(), nil, nil
     end
 
     local player = hud.CharRef
     local text = B.valid(player) and activeStatusText(player) or ""
-    if text == lastText then return end
+    if text == lastText then
+        return
+    end
     if text ~= "" then
-        if not B.valid(label) then label = createStatusLabel(hud) end
+        if not B.valid(label) then
+            label = createStatusLabel(hud)
+        end
         label:SetText(FText(text))
         label:SetVisibility(3) -- HitTestInvisible
     elseif B.valid(label) then

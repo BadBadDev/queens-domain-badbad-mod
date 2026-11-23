@@ -105,7 +105,15 @@ B.config = assert(loadfile(dir .. "config.lua"))()
 assert(loadfile(dir .. "options.lua"))(B)
 
 local optional = { graphics = "graphics", drag = "drag", shimmer = "shimmer", statusnames = "statusNames" }
-for _, name in ipairs({ "graphics", "monsterhealthbar", "drag", "shimmer", "iteminfo", "widescreen", "statusnames" }) do
+for _, name in ipairs({
+    "graphics",
+    "monsterhealthbar",
+    "drag",
+    "shimmer",
+    "iteminfo",
+    "widescreen",
+    "statusnames",
+}) do
     if not optional[name] or B.config[optional[name]] then
         local ok, err = pcall(function()
             assert(loadfile(dir .. name .. ".lua"))(B)
