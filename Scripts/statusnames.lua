@@ -46,6 +46,9 @@ local function activeStatusText(player)
     if B.valid(sword) and #sword.DebuffAppliers > 0 then
         include("Gem Curse")
     end
+    if B.hasTravelStride and B.hasTravelStride(player) then
+        include("Travel Stride")
+    end
 
     table.sort(names)
     return table.concat(names, "\n")

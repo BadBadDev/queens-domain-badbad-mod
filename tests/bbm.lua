@@ -2,6 +2,7 @@
 local suites = {
     "widescreen",
     "statusnames",
+    "travelstride",
     "itemstats",
     "monsterhealthbar",
     "shimmer_preferences",

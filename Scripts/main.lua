@@ -37,6 +37,9 @@ function B.hook(path, fn)
         hooks[path] = { callbacks = {} }
     end
     table.insert(hooks[path].callbacks, fn)
+    return function()
+        return hooks[path].bound == true
+    end
 end
 
 local function bindAvailableGameHooks()
@@ -104,7 +107,13 @@ end
 B.config = assert(loadfile(dir .. "config.lua"))()
 assert(loadfile(dir .. "options.lua"))(B)
 
-local optional = { graphics = "graphics", drag = "drag", shimmer = "shimmer", statusnames = "statusNames" }
+local optional = {
+    graphics = "graphics",
+    drag = "drag",
+    shimmer = "shimmer",
+    statusnames = "statusNames",
+    travelstride = "travelStride",
+}
 for _, name in ipairs({
     "graphics",
     "monsterhealthbar",
@@ -112,6 +121,7 @@ for _, name in ipairs({
     "shimmer",
     "iteminfo",
     "widescreen",
+    "travelstride",
     "statusnames",
 }) do
     if not optional[name] or B.config[optional[name]] then

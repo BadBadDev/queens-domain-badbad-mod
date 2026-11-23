@@ -13,6 +13,7 @@
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
 | **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
+| **Travel Stride** | After 8 seconds out of combat, move 25% faster on the ground and recharge sword dashes at twice the normal rate. Jumping or walking off a ledge suspends the speed bonus, not the dash recharge. Land to resume without another wait. Enemy aggro or a combat hit resets the timer. |
 | **Widescreen** | The camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 
 ### Reading the numbers (Examples)
@@ -53,4 +54,3 @@ Pull requests into `main` must pass **Lua quality gate**: Lua 5.4 syntax, Luache
 ## TODO (not yet implemented)
 
 - [ ] **Quick save:** verify what Alt+F4 saves and restores before reusing that routine without quitting.
-- [ ] **Faster exploration:** check for a reliable combat flag before increasing out-of-combat running speed. Restore normal speed when combat starts.
