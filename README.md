@@ -13,7 +13,7 @@
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
 | **Status effect names** | Active effects appear in small text at the bottom left, alongside the game's colour cues. Names disappear as each effect ends. |
-| **Widescreen** | The camera adapts automatically. HP, stamina and compass follow the viewport edges. |
+| **Widescreen** | The camera and edge HUD adapt automatically. Screen-space status borders such as Poison expand to the edges on ultrawide; standard and narrower viewports keep the native layout. |
 
 ### Reading the numbers (Examples)
 
@@ -51,5 +51,4 @@ To uninstall, delete the `BadBadMod` folder.
 ## TODO (not yet implemented)
 
 - [ ] **Quick save:** verify what Alt+F4 saves and restores before reusing that routine without quitting.
-- [ ] **Widescreen status overlays:** compare full-width overlays with centered overlays that have rounded edges.
 - [ ] **Faster exploration:** check for a reliable combat flag before increasing out-of-combat running speed. Restore normal speed when combat starts.

@@ -1,4 +1,4 @@
--- Adapts the player camera and HUD edge groups to the current viewport aspect ratio.
+-- Adapts the gameplay camera, edge HUD groups and status borders to the viewport aspect ratio.
 local B = ...
 local nextViewportCheck, trackedHudId, appliedEdgeOffset = 0, nil, 0
 local originalAspectConstraint, trackedCameraId, isWide = nil, nil, false
@@ -76,6 +76,47 @@ local function updateWidescreenHud(ctx)
 end
 
 B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", updateWidescreenHud)
+
+-- Poison, Heavy and other screen-space status effects reuse this widget. Leave
+-- its material, pulse animation and native aspect-mode selection untouched.
+local widgetLayoutLibrary
+
+local function fitStatusEffectBorder(context)
+    local overlay = context:get()
+    local image = overlay.OverlayLayer
+    if not B.valid(image) then
+        return
+    end
+
+    if not widgetLayoutLibrary then
+        widgetLayoutLibrary = B.lib("/Script/UMG.Default__WidgetLayoutLibrary")
+    end
+    local viewport = widgetLayoutLibrary:GetViewportSize(overlay)
+    if viewport.Y <= 0 then
+        return
+    end
+    local aspect = viewport.X / viewport.Y
+    local scaleX, scaleY = 1, 1
+    local scaleBox = image:GetParent()
+    if aspect > 16 / 9 + 0.001 and B.valid(scaleBox) and scaleBox.Stretch == 2 then -- ScaleToFit
+        local brushSize = image.Brush.ImageSize
+        if brushSize.X > 0 and brushSize.Y > 0 then
+            local ratio = aspect / (brushSize.X / brushSize.Y)
+            scaleX, scaleY = math.max(1, ratio), math.max(1, 1 / ratio)
+        end
+    end
+
+    local previous = image.RenderTransform.Scale
+    if math.abs(previous.X - scaleX) > 0.001 or math.abs(previous.Y - scaleY) > 0.001 then
+        image:SetRenderScale({ X = scaleX, Y = scaleY })
+    end
+end
+
+B.hook(
+    "/Game/Player/StatusEffectVisualizers/StatusEffectOverlay.StatusEffectOverlay_C:Tick",
+    fitStatusEffectBorder
+)
 table.insert(B.reset, function()
     trackedHudId, appliedEdgeOffset, nextViewportCheck, trackedCameraId, isWide = nil, 0, 0, nil, false
+    widgetLayoutLibrary = nil
 end)

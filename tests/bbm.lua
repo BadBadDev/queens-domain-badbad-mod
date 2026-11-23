@@ -29,6 +29,7 @@ FText = function(x)
 end
 local hooks = {}
 local function bind(path, fn)
+    hooks[path] = fn
     hooks[path:match(":([^:]+)$")] = fn
 end
 local B = {
@@ -69,6 +70,7 @@ B.lib = function()
     }
 end
 module("widescreen", B)
+hooks.Tick = hooks["/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick"]
 hooks.Tick(ref(hud))
 assert(hud.StatusCluster.RenderTransform.Translation.X == 8)
 width = 2560
@@ -90,6 +92,27 @@ now = 3
 hooks.Tick(ref(hud))
 assert(hud.CompassWidget.RenderTransform.Translation.X == -30)
 assert(cam.bConstrainAspectRatio)
+
+do
+    local box = obj({ Stretch = 2 })
+    local image = wing(0)
+    image.RenderTransform.Scale = { X = 1, Y = 1 }
+    image.Brush = { ImageSize = { X = 1920, Y = 1080 } }
+    image.GetParent = function() return box end
+    image.SetRenderScale = function(self, size) self.RenderTransform.Scale = size end
+    local overlay = ref(obj({ OverlayLayer = image }))
+    local fit = hooks["/Game/Player/StatusEffectVisualizers/StatusEffectOverlay.StatusEffectOverlay_C:Tick"]
+    width = 2560
+    fit(overlay)
+    assert(math.abs(image.RenderTransform.Scale.X - 4 / 3) < 0.001 and image.RenderTransform.Scale.Y == 1)
+    box.Stretch = 1 -- stock Fill must not be stretched twice
+    fit(overlay)
+    assert(image.RenderTransform.Scale.X == 1)
+    box.Stretch = 2
+    width = 1920
+    fit(overlay)
+    assert(image.RenderTransform.Scale.X == 1 and image.RenderTransform.Scale.Y == 1)
+end
 
 do
     local component = obj({ Applied = true, EffectName = { ToString = function() return "Poison" end } })
