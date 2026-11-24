@@ -70,7 +70,7 @@ local function bindAvailableGameHooks()
         end
     end
 end
-local validShimmerLevels = { low = true, medium = true, high = true }
+local validShimmerLevels = { low = true, medium = true, high = true, arrow = true }
 local pref = dir .. "..\\shimmer.txt"
 local f = io.open(pref, "r")
 if f then

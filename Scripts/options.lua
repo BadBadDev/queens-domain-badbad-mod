@@ -84,8 +84,8 @@ local function saveFeatureSwitch(key, value)
 end
 
 local pages = {}
-local choices = { "low", "medium", "high" }
-local choiceIndex = { low = 0, medium = 1, high = 2 }
+local choices = { "low", "medium", "high", "arrow" }
+local choiceIndex = { low = 0, medium = 1, high = 2, arrow = 3 }
 
 local function createNativeOptionWidget(page, className)
     local name = "OptionsMenu_" .. className
@@ -103,7 +103,7 @@ local function appendNativeOptionRow(page, list, caption, kind)
     control.SkipSavingOption = true
     if kind == "OptionSelect" then
         control.ApplyOptionSettings = false
-        control.Options = { FText("Low"), FText("Medium"), FText("High") }
+        control.Options = { FText("Low"), FText("Medium"), FText("High"), FText("Over Here!") }
     end
     entry.DisableRevert = true
     entry.Name = FText(caption)

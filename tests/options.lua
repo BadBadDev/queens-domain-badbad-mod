@@ -92,6 +92,12 @@ local testResult, testError = pcall(function()
     selector:Refreshtext()
     hooks.Tick(ref(page))
     assert(B.shimmer == "high" and readIni() == ini)
+    selector.CurrentValue = selector.CurrentValue + 1
+    selector:Refreshtext()
+    hooks.Close(ref(page))
+    assert(B.shimmer == "arrow" and selector.text == "Over Here!" and readIni() == ini)
+    hooks.Open(ref(page))
+    assert(selector.CurrentValue == 3)
     local drag, damage
     for _, row in ipairs(optionRows) do
         if row.Name:find("Drag to equip", 1, true) then
@@ -106,7 +112,7 @@ local testResult, testError = pcall(function()
     hooks.Tick(ref(page))
     damage.CurrentValue = false
     hooks.Close(ref(page))
-    assert(B.config.drag and B.config.damageNumbers and B.shimmer == "high")
+    assert(B.config.drag and B.config.damageNumbers and B.shimmer == "arrow")
     assert(readIni() == ini:gsub("drag = 1", "drag = 0") .. "damageNumbers=0\n")
     test.loadModule("options")
     assert(not B.config.drag and not B.config.damageNumbers and not B.config.graphics)

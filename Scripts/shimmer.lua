@@ -120,13 +120,13 @@ local NO_TRANSFORM = {
 }
 local partClass = {} -- found once, the first time a part is made
 
-local function loadBeamAsset(path)
+local function loadMarkerAsset(path)
     local obj = StaticFindObject(path)
     if not B.valid(obj) then
         LoadAsset(path)
         obj = StaticFindObject(path)
     end
-    assert(B.valid(obj), "beam asset missing: " .. path)
+    assert(B.valid(obj), "pickup marker asset missing: " .. path)
     return obj
 end
 -- GodRay_Cutout starts at its pivot and runs 100 cm along +X. Its shader
@@ -145,8 +145,8 @@ local function setPickupBeamVisible(e, actor, visible)
     end
     local comp = e.beamPath and StaticFindObject(e.beamPath)
     if visible and not B.valid(comp) then
-        local mesh = loadBeamAsset("/Game/VFX/Meshes/GodRay_Cutout.GodRay_Cutout")
-        local mat = loadBeamAsset("/Game/VFX/Environment/Materials/M_GodRay_Animated.M_GodRay_Animated")
+        local mesh = loadMarkerAsset("/Game/VFX/Meshes/GodRay_Cutout.GodRay_Cutout")
+        local mat = loadMarkerAsset("/Game/VFX/Environment/Materials/M_GodRay_Animated.M_GodRay_Animated")
         comp =
             actor:AddComponentByClass(B.lib("/Script/Engine.StaticMeshComponent"), false, beamTransform, true)
         assert(B.valid(comp), "beam component unavailable")
@@ -175,6 +175,81 @@ local function setPickupBeamVisible(e, actor, visible)
     end
     e.beamOn = visible
 end
+
+local function createArrowMesh(actor, shape, scale, rotation)
+    local mesh = loadMarkerAsset("/Engine/BasicShapes/" .. shape .. "." .. shape)
+    local material = loadMarkerAsset("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial")
+    local part =
+        actor:AddComponentByClass(B.lib("/Script/Engine.StaticMeshComponent"), false, NO_TRANSFORM, true)
+    assert(B.valid(part), "could not create arrow " .. shape)
+    part:SetVisibility(false, false)
+    part:SetCollisionEnabled(0)
+    part:SetGenerateOverlapEvents(false)
+    part:SetCastShadow(false)
+    part:SetStaticMesh(mesh)
+    part:SetMaterial(0, material)
+    actor:FinishAddComponent(part, false, NO_TRANSFORM)
+    part:SetAbsolute(false, true, true)
+    part:K2_SetWorldRotation(rotation, false, {}, false)
+    part:SetWorldScale3D(scale)
+    part:SetVectorParameterValueOnMaterials(FName("Color"), { X = 1.5, Y = 0.005, Z = 0.01 })
+    local lower, upper = {}, {}
+    part:GetLocalBounds(lower, upper)
+    return part, lower.Z * scale.Z, upper.Z * scale.Z
+end
+
+local function updatePickupArrow(entry, actor, visible, now)
+    if not visible and not entry.arrowOn then
+        return
+    end
+    local shaft = entry.arrowPath and StaticFindObject(entry.arrowPath)
+    if not visible then
+        if B.valid(shaft) then
+            shaft:SetVisibility(false, true)
+        end
+        entry.arrowOn = false
+        return
+    end
+
+    local p = actor:K2_GetActorLocation()
+    if not B.valid(shaft) then
+        local center, extent = {}, {}
+        B.lib("/Script/Engine.Default__KismetSystemLibrary")
+            :GetComponentBounds(actor.PickupGraphics, center, extent, {})
+        local tipZ = p.Z + math.max(0, center.Z + extent.Z - p.Z) + 18
+        local shaftBottom
+        shaft, shaftBottom = createArrowMesh(
+            actor,
+            "Cylinder",
+            { X = 0.12, Y = 0.12, Z = 0.28 },
+            { Pitch = 0, Yaw = 0, Roll = 0 }
+        )
+        local head, headBottom, headTop = createArrowMesh(
+            actor,
+            "Cone",
+            { X = 0.36, Y = 0.36, Z = 0.22 },
+            { Pitch = 0, Yaw = 0, Roll = 180 }
+        )
+        entry.shaftOffset = tipZ - p.Z + headTop - headBottom - shaftBottom
+        shaft:K2_SetWorldLocation({ X = p.X, Y = p.Y, Z = p.Z + entry.shaftOffset }, false, {}, false)
+        -- Keep world transforms while parenting: both parts bob and hide as one,
+        -- independently of the pickup's own scale or rotation.
+        head:K2_SetWorldLocation({ X = p.X, Y = p.Y, Z = tipZ + headTop }, false, {}, false)
+        assert(head:K2_AttachToComponent(shaft, FName("None"), 1, 1, 1, false), "could not attach arrowhead")
+        entry.arrowPath = assert(shaft:GetFullName():match("^%S+ (.+)$"))
+    end
+    local bob = 6 * math.sin(TWO_PI * (now / 0.9 + entry.phase))
+    shaft:K2_SetWorldLocation({ X = p.X, Y = p.Y, Z = p.Z + entry.shaftOffset + bob }, false, {}, false)
+    if not entry.arrowOn then
+        shaft:SetVisibility(true, true)
+    end
+    entry.arrowOn = true
+end
+
+local function hasWorldMarker()
+    return B.shimmer == "high" or B.shimmer == "arrow"
+end
+
 local lightsOn = 0
 
 local items, byPath, live = {}, {}, {} -- list of entries, path -> entry, entries now pulsing
@@ -460,6 +535,9 @@ local function restorePickupMaterial(e, gfx, a)
     if e.beamOn and a then
         setPickupBeamVisible(e, a, false)
     end
+    if e.arrowOn then
+        updatePickupArrow(e, a, false)
+    end
     if e.deco then
         if a then
             local ok, err = xpcall(hideAccessibilityMarkers, formatShimmerError, e, a)
@@ -570,7 +648,7 @@ local function updatePickupsInRange(now, px, py, pz)
                         local gfx = a.PickupGraphics
                         if gfx and gfx:IsValid() and isCollectable(a, gfx) then
                             if not hasPickupMaterial(e, gfx) then
-                                if B.shimmer == "high" and #live < cfg.MaxPulsing then
+                                if hasWorldMarker() and #live < cfg.MaxPulsing then
                                     e.live, e.last = true, -1
                                     live[#live + 1] = e
                                     activated = activated + 1
@@ -634,10 +712,13 @@ local function animateActivePickups(now, deadline, px, py)
             if not far or (tickCount + i) % cfg.FarEvery == 0 then
                 local wave = 0.5 + 0.5 * math.sin((t + e.phase) * TWO_PI)
                 local level = cfg.Rest + (1 - cfg.Rest) * wave ^ cfg.Sharpness
-                if math.abs(level - e.last) > 0.01 or e.mode ~= B.shimmer then
+                if B.shimmer == "arrow" or math.abs(level - e.last) > 0.01 or e.mode ~= B.shimmer then
                     local a = findObjectByPath(e.path)
                     local gfx = a and a.PickupGraphics
                     if not (gfx and gfx:IsValid()) then
+                        if e.arrowOn then
+                            updatePickupArrow(e, a, false)
+                        end
                         forgetPickup(e)
                         removed = true
                     elseif not isCollectable(a, gfx) then
@@ -656,6 +737,13 @@ local function animateActivePickups(now, deadline, px, py)
                                 B.warn("high shimmer beam", why)
                             end
                         end
+                        if not e.arrowFailed then
+                            local ok, why = pcall(updatePickupArrow, e, a, B.shimmer == "arrow", now)
+                            if not ok then
+                                e.arrowFailed = true
+                                B.warn("pickup arrow", why)
+                            end
+                        end
                         if e.emissive ~= nil then
                             local gain = B.shimmer == "medium" and 0.65 + 2.25 * level or cfg.Strength * level
                             gfx:SetScalarParameterValueOnMaterials(
@@ -663,7 +751,7 @@ local function animateActivePickups(now, deadline, px, py)
                                 e.emissive + cfg.EmissivePeak * gain
                             )
                             gfx:SetScalarParameterValueOnMaterials(COLOR, e.color + cfg.ColorPeak * gain)
-                        elseif B.shimmer ~= "high" then
+                        elseif not hasWorldMarker() then
                             e.live = false
                             removed = true
                         end
