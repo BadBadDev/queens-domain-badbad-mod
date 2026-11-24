@@ -96,7 +96,11 @@ local buffStatsByItem = {
     IronPotion = { "Damage reduction", "Iron Skin Potion Damage Reduction" },
 }
 
-local function buildItemStatRows(owner, item)
+local function formatHealing(hp, bonus)
+    return formatNumber(hp) .. (bonus and (" (" .. formatSignedNumber(hp * bonus) .. ")") or "")
+end
+
+local function buildItemStatRows(owner, item, baseValuesOnly)
     local rows, config = {}, nil
     local function appendStat(k, v)
         rows[#rows + 1] = { k, v }
@@ -113,11 +117,12 @@ local function buildItemStatRows(owner, item)
     end
     local name = item:GetFName():ToString()
     if healingFieldsByItem[name] then
-        local hp, bonus = getPlayerBalance()[healingFieldsByItem[name]], readHealingBonus(owner)
-        appendStat(
-            "Heals:",
-            formatNumber(hp) .. (bonus and (" (" .. formatSignedNumber(hp * bonus) .. ")") or "")
-        )
+        local hp = getPlayerBalance()[healingFieldsByItem[name]]
+        local bonus
+        if not baseValuesOnly then
+            bonus = readHealingBonus(owner)
+        end
+        appendStat("Heals:", formatHealing(hp, bonus))
     elseif name == "Pizza_Upgrade" then
         appendStat("Healing bonus", formatSignedPercent(getPlayerBalance().Pizza_HealingEffectIncrease))
     elseif buffStatsByItem[name] then
@@ -134,26 +139,31 @@ local function buildItemStatRows(owner, item)
             local lib = B.lib("/Game/Player/PlayerStatsAndUtils.Default__PlayerStatsAndUtils_C")
             local scale = getPlayerBalance().BaseDamage
             for _, attackType in ipairs({ "Primary", "Secondary" }) do
-                local baseResult, levelResult, totalResult = {}, {}, {}
-                lib["GetWeapon" .. attackType .. "AttackPower"](
-                    lib,
-                    item,
-                    owner,
-                    baseResult,
-                    levelResult,
-                    totalResult
-                )
-                local base, total = baseResult.BasePower, totalResult.TotalPower
-                -- Both native getters return level multiplier minus one, not a power delta.
-                local levelBonus = formatSignedPercent(levelResult.IncreaseFromLevel)
-                appendStat(
-                    attackType .. " Attack",
-                    ("%d (%s) = %d"):format(
-                        toDisplayedAttackPower(base, scale),
-                        levelBonus,
-                        toDisplayedAttackPower(total, scale)
+                if baseValuesOnly then
+                    appendStat(
+                        attackType .. " Attack",
+                        tostring(toDisplayedAttackPower(stats[attackType .. "AttackPower"], scale))
                     )
-                )
+                else
+                    local baseResult, levelResult, totalResult = {}, {}, {}
+                    lib["GetWeapon" .. attackType .. "AttackPower"](
+                        lib,
+                        item,
+                        owner,
+                        baseResult,
+                        levelResult,
+                        totalResult
+                    )
+                    -- Both native getters return level multiplier minus one, not a power delta.
+                    appendStat(
+                        attackType .. " Attack",
+                        ("%d (%s) = %d"):format(
+                            toDisplayedAttackPower(baseResult.BasePower, scale),
+                            formatSignedPercent(levelResult.IncreaseFromLevel),
+                            toDisplayedAttackPower(totalResult.TotalPower, scale)
+                        )
+                    )
+                end
             end
             appendStat("Stamina recovery (base)", formatDuration(stats.PowerMeterTime))
         end
@@ -198,4 +208,8 @@ local function healingBonusText(owner)
     local bonus = readHealingBonus(owner)
     return bonus and formatNumber(bonus * 100) .. "%" or "Unavailable"
 end
-return { buildItemStatRows = buildItemStatRows, healingBonusText = healingBonusText }
+return {
+    buildItemStatRows = buildItemStatRows,
+    healingBonusText = healingBonusText,
+    formatHealing = formatHealing,
+}

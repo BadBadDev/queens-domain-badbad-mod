@@ -14,6 +14,7 @@
 --   pickup is near, and on a slow build only one new path per SlowLookupGap seconds.
 -- - StaticFindObject on a path that no longer exists: 55 ms, every time. So a collected pickup is forgotten at once.
 local B = ...
+local OFF, MID, HIGH, ARROW = 0, 2, 3, 4
 local cfg = {
     Enabled = true,
     Strength = 1.0,
@@ -246,7 +247,7 @@ local function updatePickupArrow(entry, actor, visible, now, graphics)
 end
 
 local function hasWorldMarker()
-    return B.shimmer == "high" or B.shimmer == "arrow"
+    return B.config.shimmer == HIGH or B.config.shimmer == ARROW
 end
 
 local lightsOn = 0
@@ -595,7 +596,7 @@ local function pulseLevel(now, phase)
 end
 
 local function applyPickupBrightness(e, gfx, level)
-    local gain = B.shimmer == "medium" and 0.65 + 2.25 * level or cfg.Strength * level
+    local gain = B.config.shimmer == MID and 0.65 + 2.25 * level or cfg.Strength * level
     gfx:SetScalarParameterValueOnMaterials(EMISSIVE, e.emissive + cfg.EmissivePeak * gain)
     gfx:SetScalarParameterValueOnMaterials(COLOR, e.color + cfg.ColorPeak * gain)
 end
@@ -620,7 +621,9 @@ local function createPreviewHerb(entry, visualizer)
         color,
         0
     )
-    assert(found, "could not locate the stone floor in the Video preview")
+    if not found then
+        return nil -- the visualizer can exist before streamed floor collision is ready
+    end
     local floorZ = hit.ImpactPoint.Z
     local transform = {
         Rotation = NO_TRANSFORM.Rotation,
@@ -658,8 +661,8 @@ local function createPreviewHerb(entry, visualizer)
     return actor
 end
 
-local preview, videoPagePath
-local function clearPreview()
+local preview
+function B.clearPreviewHerb()
     local actor = preview and preview.path and findObjectByPath(preview.path)
     if actor then
         actor:K2_DestroyActor()
@@ -667,48 +670,32 @@ local function clearPreview()
     preview = nil
 end
 
-local videoMenu = "/Game/UI/Menus/OptionsMenu/OptionLists/Video_OptionsList.Video_OptionsList_C:"
-B.hook(videoMenu .. "Open", function(ctx)
-    clearPreview()
-    videoPagePath = objectPath(ctx:get())
-end)
-B.hook(videoMenu .. "Close", function(ctx)
-    if videoPagePath == objectPath(ctx:get()) then
-        videoPagePath = nil
-        clearPreview()
-    end
-end)
 table.insert(B.reset, function()
-    preview, videoPagePath = nil, nil
+    preview = nil
 end)
 
-local function updatePreview(now)
-    local page = findObjectByPath(videoPagePath)
-    if not page then
-        videoPagePath = nil
-        clearPreview()
-        return
-    end
-    local visualizer = page.ConfigVisInst
-    if not B.valid(visualizer) or not page:IsVisible() then
-        return -- the native page streams its scene asynchronously
-    end
-    local ok, err = pcall(function()
-        local actor = preview and findObjectByPath(preview.path)
+function B.updatePreviewHerb(visualizer)
+    local mode = B.config.shimmer
+    local enabled = mode ~= OFF
+    local actor = preview and preview.path and findObjectByPath(preview.path)
+    if not actor then
+        preview = { phase = 0 }
+        actor = createPreviewHerb(preview, visualizer)
         if not actor then
-            preview = { phase = 0 }
-            actor = createPreviewHerb(preview, visualizer)
+            return false
         end
-        local gfx = actor.StaticMeshComponent
-        applyPickupBrightness(preview, gfx, pulseLevel(now, preview.phase))
-        setPickupBeamVisible(preview, actor, B.shimmer == "high")
-        updatePickupArrow(preview, actor, B.shimmer == "arrow", now, gfx)
-    end)
-    if not ok then
-        videoPagePath = nil
-        clearPreview()
-        B.warn("video pickup preview", err)
     end
+    local now, gfx = os.clock(), actor.StaticMeshComponent
+    if enabled then
+        applyPickupBrightness(preview, gfx, pulseLevel(now, preview.phase))
+    elseif preview.enabled ~= false then
+        gfx:SetScalarParameterValueOnMaterials(EMISSIVE, preview.emissive)
+        gfx:SetScalarParameterValueOnMaterials(COLOR, preview.color)
+    end
+    setPickupBeamVisible(preview, actor, mode == HIGH)
+    updatePickupArrow(preview, actor, mode == ARROW, now, gfx)
+    preview.enabled = enabled
+    return true
 end
 
 -- At the pulsing limit, a far pickup makes way for a near one, so the one in front of the player always shows.
@@ -831,7 +818,11 @@ local function animateActivePickups(now, deadline, px, py)
             local far = (e.dist2 or 0) > NEAR2
             if not far or (tickCount + i) % cfg.FarEvery == 0 then
                 local level = pulseLevel(now, e.phase)
-                if B.shimmer == "arrow" or math.abs(level - e.last) > 0.01 or e.mode ~= B.shimmer then
+                if
+                    B.config.shimmer == ARROW
+                    or math.abs(level - e.last) > 0.01
+                    or e.mode ~= B.config.shimmer
+                then
                     local a = findObjectByPath(e.path)
                     local gfx = a and a.PickupGraphics
                     if not (gfx and gfx:IsValid()) then
@@ -850,14 +841,15 @@ local function animateActivePickups(now, deadline, px, py)
                         removed = true
                     else
                         if not e.beamFailed then
-                            local ok, why = pcall(setPickupBeamVisible, e, a, B.shimmer == "high")
+                            local ok, why = pcall(setPickupBeamVisible, e, a, B.config.shimmer == HIGH)
                             if not ok then
                                 e.beamFailed = true
                                 B.warn("high shimmer beam", why)
                             end
                         end
                         if not e.arrowFailed then
-                            local ok, why = pcall(updatePickupArrow, e, a, B.shimmer == "arrow", now, gfx)
+                            local ok, why =
+                                pcall(updatePickupArrow, e, a, B.config.shimmer == ARROW, now, gfx)
                             if not ok then
                                 e.arrowFailed = true
                                 B.warn("pickup arrow", why)
@@ -869,7 +861,7 @@ local function animateActivePickups(now, deadline, px, py)
                             e.live = false
                             removed = true
                         end
-                        e.mode = B.shimmer
+                        e.mode = B.config.shimmer
                         e.last = level
                         if CB and not e.noDeco then
                             local ok, err =
@@ -964,10 +956,21 @@ local function reportShimmerTimings(ms)
 end
 
 local function updateNearbyPickupEffects()
-    local started = os.clock()
-    if videoPagePath then
-        updatePreview(started)
+    if B.config.shimmer == OFF then
+        if #live > 0 then
+            for _, entry in ipairs(live) do
+                if entry.live then
+                    local actor = findObjectByPath(entry.path)
+                    restorePickupMaterial(entry, actor and actor.PickupGraphics, actor)
+                end
+            end
+            -- Keep tracked paths so re-enabling reuses each pickup's marker components.
+            live, liveStart = {}, 1
+        end
+        rescanAt = 0 -- include pickups that spawned while Off, once enabled again
+        return
     end
+    local started = os.clock()
     tickCount = tickCount + 1
     if #pending > 0 then
         local p = pending
@@ -1003,6 +1006,9 @@ local hookTryAt = 0 -- the character class may load after the controller, so act
 -- New pickups, including enemy drops, as they appear. Not in every UE4SS, so the rescan above covers the rest.
 pcall(function()
     RegisterBeginPlayPostHook(function(ctx)
+        if B.config.shimmer == OFF then
+            return
+        end
         local s = cfg.Debug and os.clock()
         local ok, err = xpcall(function()
             hookFired = true -- any actor at all shows the hook works here

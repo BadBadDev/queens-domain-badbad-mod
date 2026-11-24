@@ -1,34 +1,46 @@
 -- Adds BBM controls to the Video menu and saves changes without touching the native system save.
-local B = ...
-local featuresPath = B.dir .. "..\\features.ini"
+local mod = ...
+local featuresPath = mod.dir .. "..\\features.ini"
 local features = {
     { "graphics", "High-resolution graphics" },
-    { "shimmer", "Pickup shimmer" },
-    { "damageNumbers", "Damage numbers" },
-    { "drag", "Drag to equip" },
+    {
+        "shimmer",
+        "Pickup shimmer",
+        levels = { "Off", "Low", "Mid", "High", "Over Here!" },
+        default = 2,
+        live = true,
+    },
+    { "enemyHpBars", "Enemy HP bars", levels = { "Off", "HP bar", "HP bar + damage" }, default = 2 },
     { "itemStats", "Item description stats" },
-    { "inventoryStats", "Inventory healing stat" },
     { "statusNames", "Status effect names" },
+    { "drag", "Drag to equip" },
+    { "inventoryStats", "Inventory healing stat" },
     { "travelStride", "Travel Stride", default = false },
     { "quickSave", "Quick Save / Load" },
 }
 local saved, known = {}, {}
 for _, feature in ipairs(features) do
-    known[feature[1]], saved[feature[1]] = true, feature.default ~= false
+    known[feature[1]] = feature
+    saved[feature[1]] = feature.levels and feature.default or feature.default ~= false
 end
 
 local function parseFeatureSwitches(data)
     local offset, values, positions = 0, {}, {}
     for line in (data .. "\n"):gmatch("([^\n]*)\n") do
         if not line:match("^%s*[;#]") and not line:match("^%s*$") then
-            local key, pos, digit = line:match("^%s*([%w_]+)%s*=%s*()([01])%s*$")
-            if key and known[key] then
+            local key, pos, digit = line:match("^%s*([%w_]+)%s*=%s*()(%d)%s*$")
+            local feature = known[key]
+            if
+                feature
+                and (digit == "0" or digit == "1" or (feature.levels and feature.levels[tonumber(digit) + 1]))
+            then
                 if positions[key] then
-                    B.warn("duplicate setting " .. key, "using last value")
+                    mod.warn("duplicate setting " .. key, "using last value")
                 end
-                values[key], positions[key] = digit == "1", offset + pos - 1
+                values[key] = feature.levels and tonumber(digit) or digit == "1"
+                positions[key] = offset + pos - 1
             else
-                B.warn("features.ini: " .. line, "expected a known key and 0 or 1")
+                mod.warn("features.ini: " .. line, "unknown setting or invalid value")
             end
         end
         offset = offset + #line + 1
@@ -41,69 +53,75 @@ if file then
     file:close()
     if data then
         local values = parseFeatureSwitches(data)
-        for k, v in pairs(values) do
-            saved[k] = v
+        for key, value in pairs(values) do
+            saved[key] = value
         end
     else
-        B.warn("reading features.ini", err)
+        mod.warn("reading features.ini", err)
     end
 else
-    B.warn("opening features.ini", why)
+    mod.warn("opening features.ini", why)
 end
--- Keep the active feature set unchanged until restart, including during a drag.
-for key, v in pairs(saved) do
-    B.config[key] = v
+for key, value in pairs(saved) do
+    mod.config[key] = value
 end
 
 local function saveFeatureSwitch(key, value)
-    local f, err = io.open(featuresPath, "r+b")
-    if not f then
+    local fileHandle, err = io.open(featuresPath, "r+b")
+    if not fileHandle then
         return nil, err
     end
-    local data, readErr = f:read("*a")
+    local data, readErr = fileHandle:read("*a")
     if not data then
-        f:close()
+        fileHandle:close()
         return nil, readErr
     end
     local _, positions = parseFeatureSwitches(data)
     -- Change just one byte, preserving other values, comments and CRLF.
     local pos = positions[key]
-    local at, seekErr = f:seek("set", pos or #data)
+    local at, seekErr = fileHandle:seek("set", pos or #data)
     if not at then
-        f:close()
+        fileHandle:close()
         return nil, seekErr
     end
     local prefix = pos and "" or ((data:sub(-1) == "\n" and "" or "\n") .. key .. "=")
-    local written, writeErr = f:write(prefix, value and "1" or "0", pos and "" or "\n")
-    local closed, closeErr = f:close()
+    local digit = known[key].levels and tostring(value) or (value and "1" or "0")
+    local written, writeErr = fileHandle:write(prefix, digit, pos and "" or "\n")
+    local closed, closeErr = fileHandle:close()
     if not written or not closed then
         return nil, writeErr or closeErr
     end
     saved[key] = value
+    if known[key].live then
+        mod.config[key] = value
+    end
     return true
 end
 
 local pages = {}
-local choices = { "low", "medium", "high", "arrow" }
-local choiceIndex = { low = 0, medium = 1, high = 2, arrow = 3 }
+local sectionTitle = "BBM Settings"
 
 local function createNativeOptionWidget(page, className)
     local name = "OptionsMenu_" .. className
     local path = "/Game/UI/Menus/OptionsMenu/" .. name .. "." .. name .. "_C"
-    local factory = B.lib("/Script/UMG.Default__WidgetBlueprintLibrary")
-    local widget = factory:Create(page, B.lib(path), page:GetOwningPlayer())
-    assert(B.valid(widget), "Could not create " .. name)
+    local factory = mod.lib("/Script/UMG.Default__WidgetBlueprintLibrary")
+    local widget = factory:Create(page, mod.lib(path), page:GetOwningPlayer())
+    assert(mod.valid(widget), "Could not create " .. name)
     return widget
 end
 
-local function appendNativeOptionRow(page, list, caption, kind)
+local function appendNativeOptionRow(page, list, caption, levels)
     local entry = createNativeOptionWidget(page, "Entry")
-    local control = createNativeOptionWidget(page, kind)
+    local control = createNativeOptionWidget(page, levels and "OptionSelect" or "ToggleControl")
     -- The native controls normally read/write FS_SystemSave. BBM owns these settings.
     control.SkipSavingOption = true
-    if kind == "OptionSelect" then
+    if levels then
         control.ApplyOptionSettings = false
-        control.Options = { FText("Low"), FText("Medium"), FText("High"), FText("Over Here!") }
+        local labels = {}
+        for i, name in ipairs(levels) do
+            labels[i] = FText(name)
+        end
+        control.Options = labels
     end
     entry.DisableRevert = true
     entry.Name = FText(caption)
@@ -121,30 +139,34 @@ local function syncFeatureToggle(control, value)
     control:PlayRelevantToggleAnim()
 end
 
-local function syncShimmerStrengthSelector(control)
-    control.CurrentValue = assert(choiceIndex[B.shimmer], "Unknown shimmer strength")
-    control:Refreshtext()
-end
-
 local function mountVideoOptionRows(page)
     local list = page.OptionsList
-    if not B.valid(list) then
+    if not mod.valid(list) then
         return
     end
     local id = page:GetAddress()
     local rows = pages[id] or {}
     pages[id] = rows
+    if not mod.valid(rows.heading) or not list:HasChild(rows.heading) then
+        local heading = mod.widget(page, "TextBlock")
+        heading:SetFont(page.Vsync.FieldLabel.Font)
+        heading:SetText(FText(sectionTitle))
+        heading:SetVisibility(3)
+        list:AddChild(heading):SetPadding({ Left = 12, Top = 16, Right = 0, Bottom = 8 })
+        rows.heading = heading
+    end
     for _, feature in ipairs(features) do
         local key, name = feature[1], feature[2]
-        if not rows[key] or not B.valid(rows[key].entry) or not list:HasChild(rows[key].entry) then
-            rows[key] = appendNativeOptionRow(page, list, "BBM: " .. name .. " (restart)", "ToggleControl")
+        if not rows[key] or not mod.valid(rows[key].entry) or not list:HasChild(rows[key].entry) then
+            rows[key] = appendNativeOptionRow(page, list, name, feature.levels)
         end
-        syncFeatureToggle(rows[key].control, saved[key])
+        if feature.levels then
+            rows[key].control.CurrentValue = saved[key]
+            rows[key].control:Refreshtext()
+        else
+            syncFeatureToggle(rows[key].control, saved[key])
+        end
     end
-    if not rows.strength or not B.valid(rows.strength.entry) or not list:HasChild(rows.strength.entry) then
-        rows.strength = appendNativeOptionRow(page, list, "BBM: Shimmer strength", "OptionSelect")
-    end
-    syncShimmerStrengthSelector(rows.strength.control)
     return rows
 end
 
@@ -152,31 +174,107 @@ local function persistChangedOptions(rows)
     for _, feature in ipairs(features) do
         local key = feature[1]
         local row = rows[key]
-        if row and B.valid(row.control) then
+        if row and mod.valid(row.control) then
             local value = row.control.CurrentValue
             if value ~= saved[key] then
+                if feature.levels then
+                    assert(feature.levels[value + 1], "Invalid native selection for " .. key)
+                end
                 local ok, err = saveFeatureSwitch(key, value)
                 if not ok then
-                    syncFeatureToggle(row.control, saved[key])
-                    B.warn("saving " .. key, err)
+                    if feature.levels then
+                        row.control.CurrentValue = saved[key]
+                        row.control:Refreshtext()
+                    else
+                        syncFeatureToggle(row.control, saved[key])
+                    end
+                    mod.warn("saving " .. key, err)
                 end
             end
-        end
-    end
-    if rows.strength and B.valid(rows.strength.control) then
-        local level =
-            assert(choices[rows.strength.control.CurrentValue + 1], "Invalid native shimmer selection")
-        if level ~= B.shimmer and not B.setShimmer(level) then
-            syncShimmerStrengthSelector(rows.strength.control)
         end
     end
 end
 local menu = "/Game/UI/Menus/OptionsMenu/OptionLists/Video_OptionsList.Video_OptionsList_C:"
 
-B.hook(menu .. "Open", function(ctx)
-    mountVideoOptionRows(ctx:get())
+-- A stationary mouse must not hold the preview on an old row after gamepad navigation.
+local function highlightedRow(page, rows)
+    local owner = page:GetOuter():GetOuter()
+    local selected = owner.LastSelectedWidget
+    local focused, selectedKey, hovered
+    for _, feature in ipairs(features) do
+        local key = feature[1]
+        local entry = rows[key].entry
+        if entry:IsHovered() then
+            hovered = key
+        end
+        if mod.valid(selected) and entry.FS_Button:GetAddress() == selected:GetAddress() then
+            selectedKey = key
+        end
+        if entry:HasAnyUserFocus() or entry:HasFocusedDescendants() then
+            focused = key
+        end
+    end
+    focused = focused or selectedKey
+    if hovered ~= rows.hovered then
+        rows.highlight = hovered or focused
+    elseif focused ~= rows.focused then
+        rows.highlight = focused or hovered
+    end
+    rows.hovered, rows.focused = hovered, focused
+    return rows.highlight
+end
+
+-- Keep the inline label in place. Only pin a copy if scrolling takes it out of view.
+local function scrolledPastHeading(page, heading)
+    local list = page.OptionsList
+    if list:GetScrollOffset() <= 0 then
+        return false
+    end
+    local slate = mod.lib("/Script/UMG.Default__SlateBlueprintLibrary")
+    local geometry = heading:GetCachedGeometry()
+    local size = slate:GetLocalSize(geometry)
+    if size.Y <= 0 then
+        return false -- no layout yet
+    end
+    local bottom = slate:LocalToAbsolute(geometry, { X = 0, Y = size.Y })
+    return slate:AbsoluteToLocal(list:GetCachedGeometry(), bottom).Y <= 0
+end
+
+local function pinHeading(page, rows, pin)
+    if pin == (rows.originalTitle ~= nil) then
+        return
+    end
+    if not mod.valid(rows.title) then
+        local canvas = page:GetOuter():GetOuter().VideoOptions
+        for i = 0, canvas:GetChildrenCount() - 1 do
+            local child = canvas:GetChildAt(i)
+            if child:GetFName():ToString() == "VideoHeader" then
+                rows.title = child
+                break
+            end
+        end
+    end
+    local title = rows.title
+    if not mod.valid(title) then
+        mod.warn("Video section title", "Native header unavailable; using inline heading")
+        return
+    end
+    if pin then
+        rows.originalTitle = title:GetText():ToString()
+        title:SetText(FText(sectionTitle))
+    else
+        title:SetText(FText(rows.originalTitle))
+        rows.originalTitle = nil
+    end
+end
+
+mod.hook(menu .. "Open", function(ctx)
+    local rows = mountVideoOptionRows(ctx:get())
+    if rows then
+        rows.closed, rows.hovered, rows.focused, rows.highlight = false, nil, nil, nil
+    end
 end)
-B.hook(menu .. "Tick", function(ctx)
+mod.hook(menu .. "Tick", function(ctx)
     local page = ctx:get()
     if not page:IsVisible() then
         return
@@ -185,19 +283,29 @@ B.hook(menu .. "Tick", function(ctx)
     if not rows then
         rows = mountVideoOptionRows(page)
     end
-    if rows and os.clock() >= (rows.nextPoll or 0) then
+    if rows and not rows.closed and os.clock() >= (rows.nextPoll or 0) then
         rows.nextPoll = os.clock() + 0.1
         persistChangedOptions(rows)
+        local key = highlightedRow(page, rows)
+        pinHeading(page, rows, scrolledPastHeading(page, rows.heading))
+        if mod.updateVideoPreview then
+            mod.updateVideoPreview(page, key, saved)
+        end
     end
 end)
 
-B.hook(menu .. "Close", function(ctx)
+mod.hook(menu .. "Close", function(ctx)
     local rows = pages[ctx:get():GetAddress()]
     if rows then
+        rows.closed = true
+        pinHeading(ctx:get(), rows, false)
+        if mod.closeVideoPreview then
+            mod.closeVideoPreview(ctx:get())
+        end
         persistChangedOptions(rows)
     end
 end)
 
-table.insert(B.reset, function()
+table.insert(mod.reset, function()
     pages = {}
 end)
