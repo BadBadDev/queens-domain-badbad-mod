@@ -1,6 +1,6 @@
 -- UE4SS entry point: loads BBM modules, shares settings and binds hooks as game classes become available.
 local dir = assert(debug.getinfo(1, "S").source:sub(2):match("^(.*[/\\])"))
-local B = { dir = dir, warned = {}, reset = {}, shimmer = "low" }
+local B = { dir = dir, warned = {}, reset = {}, shimmer = "medium" }
 
 function B.log(s)
     print("[BBM] " .. s .. "\n")
@@ -79,7 +79,7 @@ if f then
     if validShimmerLevels[level] then
         B.shimmer = level
     else
-        B.warn("shimmer.txt", "invalid level; using low")
+        B.warn("shimmer.txt", "invalid level; using " .. B.shimmer)
     end
 end
 

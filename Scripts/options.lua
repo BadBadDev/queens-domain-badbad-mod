@@ -9,12 +9,12 @@ local features = {
     { "itemStats", "Item description stats" },
     { "inventoryStats", "Inventory healing stat" },
     { "statusNames", "Status effect names" },
-    { "travelStride", "Travel Stride" },
+    { "travelStride", "Travel Stride", default = false },
     { "quickSave", "Quick Save / Load" },
 }
 local saved, known = {}, {}
 for _, feature in ipairs(features) do
-    known[feature[1]], saved[feature[1]] = true, true
+    known[feature[1]], saved[feature[1]] = true, feature.default ~= false
 end
 
 local function parseFeatureSwitches(data)

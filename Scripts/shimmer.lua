@@ -198,7 +198,7 @@ local function createArrowMesh(actor, shape, scale, rotation)
     return part, lower.Z * scale.Z, upper.Z * scale.Z
 end
 
-local function updatePickupArrow(entry, actor, visible, now)
+local function updatePickupArrow(entry, actor, visible, now, graphics)
     if not visible and not entry.arrowOn then
         return
     end
@@ -214,8 +214,7 @@ local function updatePickupArrow(entry, actor, visible, now)
     local p = actor:K2_GetActorLocation()
     if not B.valid(shaft) then
         local center, extent = {}, {}
-        B.lib("/Script/Engine.Default__KismetSystemLibrary")
-            :GetComponentBounds(actor.PickupGraphics, center, extent, {})
+        B.lib("/Script/Engine.Default__KismetSystemLibrary"):GetComponentBounds(graphics, center, extent, {})
         local tipZ = p.Z + math.max(0, center.Z + extent.Z - p.Z) + 18
         local shaftBottom
         shaft, shaftBottom = createArrowMesh(
@@ -590,6 +589,128 @@ local function activatePickupPulse(e, gfx)
     return true
 end
 
+local function pulseLevel(now, phase)
+    local wave = 0.5 + 0.5 * math.sin((now / cfg.PulseSeconds + phase) * TWO_PI)
+    return cfg.Rest + (1 - cfg.Rest) * wave ^ cfg.Sharpness
+end
+
+local function applyPickupBrightness(e, gfx, level)
+    local gain = B.shimmer == "medium" and 0.65 + 2.25 * level or cfg.Strength * level
+    gfx:SetScalarParameterValueOnMaterials(EMISSIVE, e.emissive + cfg.EmissivePeak * gain)
+    gfx:SetScalarParameterValueOnMaterials(COLOR, e.color + cfg.ColorPeak * gain)
+end
+
+-- A plain mesh in the preview's streamed level: no pickup interaction, inventory or save callbacks.
+local function createPreviewHerb(entry, visualizer)
+    local base = visualizer:K2_GetActorLocation()
+    -- Bare stone just beyond the seated skeleton's toes in the stock preview.
+    local x, y = base.X + 123, base.Y - 151
+    local hit, color = {}, { R = 0, G = 0, B = 0, A = 1 }
+    local found = B.lib("/Script/Engine.Default__KismetSystemLibrary"):LineTraceSingle(
+        visualizer,
+        { X = x, Y = y, Z = base.Z + 120 },
+        { X = x, Y = y, Z = base.Z - 120 },
+        0,
+        true,
+        {},
+        0,
+        hit,
+        true,
+        color,
+        color,
+        0
+    )
+    assert(found, "could not locate the stone floor in the Video preview")
+    local floorZ = hit.ImpactPoint.Z
+    local transform = {
+        Rotation = NO_TRANSFORM.Rotation,
+        Translation = { X = x, Y = y, Z = floorZ },
+        Scale3D = NO_TRANSFORM.Scale3D,
+    }
+    local herb = "/Game/Items/Consumables/Herb/"
+    local mesh = loadMarkerAsset(herb .. "HealingHerbs_00_SM.HealingHerbs_00_SM")
+    local leaves = loadMarkerAsset(herb .. "HealingHerbs_02_MI.HealingHerbs_02_MI")
+    local gameplay = B.lib("/Script/Engine.Default__GameplayStatics")
+    local actor = gameplay:BeginDeferredActorSpawnFromClass(
+        visualizer,
+        B.lib("/Script/Engine.StaticMeshActor"),
+        transform,
+        1,
+        visualizer
+    )
+    assert(B.valid(actor), "could not spawn the preview herb")
+    entry.path = objectPath(actor)
+    actor:SetActorEnableCollision(false)
+    local gfx = actor.StaticMeshComponent
+    gfx:SetMobility(2)
+    gfx:SetCollisionEnabled(0)
+    gfx:SetGenerateOverlapEvents(false)
+    gfx:SetStaticMesh(mesh)
+    gfx:SetMaterial(0, leaves)
+    gameplay:FinishSpawningActor(actor, transform)
+    local lower, upper = {}, {}
+    gfx:GetLocalBounds(lower, upper)
+    local scale = 1.65
+    gfx:SetWorldScale3D({ X = scale, Y = scale, Z = scale })
+    gfx:K2_SetWorldLocation({ X = x, Y = y, Z = floorZ - lower.Z * scale }, false, {}, false)
+    gfx:SetScalarParameterValueOnMaterials(UNUSED, 0)
+    entry.emissive, entry.color = readPickupBrightness(gfx)
+    return actor
+end
+
+local preview, videoPagePath
+local function clearPreview()
+    local actor = preview and preview.path and findObjectByPath(preview.path)
+    if actor then
+        actor:K2_DestroyActor()
+    end
+    preview = nil
+end
+
+local videoMenu = "/Game/UI/Menus/OptionsMenu/OptionLists/Video_OptionsList.Video_OptionsList_C:"
+B.hook(videoMenu .. "Open", function(ctx)
+    clearPreview()
+    videoPagePath = objectPath(ctx:get())
+end)
+B.hook(videoMenu .. "Close", function(ctx)
+    if videoPagePath == objectPath(ctx:get()) then
+        videoPagePath = nil
+        clearPreview()
+    end
+end)
+table.insert(B.reset, function()
+    preview, videoPagePath = nil, nil
+end)
+
+local function updatePreview(now)
+    local page = findObjectByPath(videoPagePath)
+    if not page then
+        videoPagePath = nil
+        clearPreview()
+        return
+    end
+    local visualizer = page.ConfigVisInst
+    if not B.valid(visualizer) or not page:IsVisible() then
+        return -- the native page streams its scene asynchronously
+    end
+    local ok, err = pcall(function()
+        local actor = preview and findObjectByPath(preview.path)
+        if not actor then
+            preview = { phase = 0 }
+            actor = createPreviewHerb(preview, visualizer)
+        end
+        local gfx = actor.StaticMeshComponent
+        applyPickupBrightness(preview, gfx, pulseLevel(now, preview.phase))
+        setPickupBeamVisible(preview, actor, B.shimmer == "high")
+        updatePickupArrow(preview, actor, B.shimmer == "arrow", now, gfx)
+    end)
+    if not ok then
+        videoPagePath = nil
+        clearPreview()
+        B.warn("video pickup preview", err)
+    end
+end
+
 -- At the pulsing limit, a far pickup makes way for a near one, so the one in front of the player always shows.
 local function evictDistantPulse(now)
     local far
@@ -695,7 +816,6 @@ local function updatePickupsInRange(now, px, py, pz)
 end
 
 local function animateActivePickups(now, deadline, px, py)
-    local t = now / cfg.PulseSeconds
     local count = #live
     if count == 0 then
         return
@@ -710,8 +830,7 @@ local function animateActivePickups(now, deadline, px, py)
         if e.live then
             local far = (e.dist2 or 0) > NEAR2
             if not far or (tickCount + i) % cfg.FarEvery == 0 then
-                local wave = 0.5 + 0.5 * math.sin((t + e.phase) * TWO_PI)
-                local level = cfg.Rest + (1 - cfg.Rest) * wave ^ cfg.Sharpness
+                local level = pulseLevel(now, e.phase)
                 if B.shimmer == "arrow" or math.abs(level - e.last) > 0.01 or e.mode ~= B.shimmer then
                     local a = findObjectByPath(e.path)
                     local gfx = a and a.PickupGraphics
@@ -738,19 +857,14 @@ local function animateActivePickups(now, deadline, px, py)
                             end
                         end
                         if not e.arrowFailed then
-                            local ok, why = pcall(updatePickupArrow, e, a, B.shimmer == "arrow", now)
+                            local ok, why = pcall(updatePickupArrow, e, a, B.shimmer == "arrow", now, gfx)
                             if not ok then
                                 e.arrowFailed = true
                                 B.warn("pickup arrow", why)
                             end
                         end
                         if e.emissive ~= nil then
-                            local gain = B.shimmer == "medium" and 0.65 + 2.25 * level or cfg.Strength * level
-                            gfx:SetScalarParameterValueOnMaterials(
-                                EMISSIVE,
-                                e.emissive + cfg.EmissivePeak * gain
-                            )
-                            gfx:SetScalarParameterValueOnMaterials(COLOR, e.color + cfg.ColorPeak * gain)
+                            applyPickupBrightness(e, gfx, level)
                         elseif not hasWorldMarker() then
                             e.live = false
                             removed = true
@@ -851,6 +965,9 @@ end
 
 local function updateNearbyPickupEffects()
     local started = os.clock()
+    if videoPagePath then
+        updatePreview(started)
+    end
     tickCount = tickCount + 1
     if #pending > 0 then
         local p = pending

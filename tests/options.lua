@@ -98,13 +98,16 @@ local testResult, testError = pcall(function()
     assert(B.shimmer == "arrow" and selector.text == "Over Here!" and readIni() == ini)
     hooks.Open(ref(page))
     assert(selector.CurrentValue == 3)
-    local drag, damage
+    local drag, damage, stride
     for _, row in ipairs(optionRows) do
         if row.Name:find("Drag to equip", 1, true) then
             drag = row.MyControl
         end
         if row.Name:find("Damage numbers", 1, true) then
             damage = row.MyControl
+        end
+        if row.Name:find("Travel Stride", 1, true) then
+            stride = row.MyControl
         end
     end
     drag.CurrentValue = false
@@ -114,7 +117,12 @@ local testResult, testError = pcall(function()
     hooks.Close(ref(page))
     assert(B.config.drag and B.config.damageNumbers and B.shimmer == "arrow")
     assert(readIni() == ini:gsub("drag = 1", "drag = 0") .. "damageNumbers=0\n")
+    assert(stride.CurrentValue == false and B.config.travelStride == false)
+    stride.CurrentValue = true
+    hooks.Close(ref(page))
+    assert(B.config.travelStride == false)
     test.loadModule("options")
+    assert(B.config.travelStride == true)
     assert(not B.config.drag and not B.config.damageNumbers and not B.config.graphics)
 end)
 os.remove(tmp)

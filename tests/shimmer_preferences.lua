@@ -40,6 +40,12 @@ local function boot()
     assert(loadfile("Scripts" .. package.config:sub(1, 1) .. "main.lua", "t", env))()
 end
 boot()
+assert(captured.shimmer == "medium" and stored == nil)
+stored = "invalid"
+boot()
+assert(captured.shimmer == "medium" and captured.warned["shimmer.txt"])
+captured.setShimmer("low")
+boot()
 assert(captured.shimmer == "low")
 captured.setShimmer("medium")
 assert(stored == "medium")
