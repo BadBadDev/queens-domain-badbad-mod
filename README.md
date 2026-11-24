@@ -14,6 +14,7 @@
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
 | **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
 | **Travel Stride** | After 8 seconds out of combat, move 25% faster on the ground and recharge sword dashes at twice the normal rate. Jumping or walking off a ledge suspends the speed bonus, not the dash recharge. Land to resume without another wait. Enemy aggro or a combat hit resets the timer. |
+| **Quick Save / Load (prototype)** | **F5** pins progression for the current slot. **F9** discards later progress and reloads that pin without returning to the title. Requires a Crystal Monument save first. |
 | **Widescreen** | The camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 
 ### Reading the numbers (Examples)
@@ -51,6 +52,12 @@ To uninstall, delete the `BadBadMod` folder.
 
 Pull requests into `main` must pass **Lua quality gate**: Lua 5.4 syntax, Luacheck (no warnings or errors), StyLua formatting, and [automated Lua tests](tests/bbm.lua). Run all tests from the repository root with `lua5.4 tests/bbm.lua`, or a single feature test with `lua5.4 tests/widescreen.lua`. No game or UE4SS installation is needed.
 
-## TODO (not yet implemented)
+## Trying Quick Save / Load
 
-- [ ] **Quick save:** verify what Alt+F4 saves and restores before reusing that routine without quitting.
+1. Back up your saves before trying this prototype. Load a slot where you've already saved at a Crystal Monument. Disable any other mod that uses F5 or F9.
+2. During gameplay, press **F5** and wait for **Quick saved**. Note your HP or the count of a consumable, then change it.
+3. Press **F9** once. The world reloads using your pinned progression and the game's last safe position. Check the count and HP. This is **not** an encounter rewind: enemies, projectiles, platforms and animations can reset.
+
+Pins are private files named `BBM_Quick_World<N>.sav` beside the corresponding `World<N>.sav`. Native autosaves don't replace them. One previous generation is kept as `.prev`; the prototype doesn't copy pins over the game's monument or recovery files. Normal game saving still operates after a reload. If you delete a character and reuse its slot number, delete that slot's `BBM_Quick_World<N>.sav` and `.prev` too.
+
+Use both keys in gameplay, in the same persistent map, not from the title, pause menu or death screen. F5 requires a last safe position on loaded walkable ground. Cutscenes, pickup animations, teleports and the game's save restrictions can block a request. Check `ue4ss\UE4SS.log` for the reason. Quick Save / Load can be disabled in **Options > Video** (restart required).

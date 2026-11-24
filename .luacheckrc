@@ -7,4 +7,5 @@ files["Scripts/**/*.lua"].read_globals = {
     "LoopInGameThreadWithDelay", "RegisterBeginPlayPostHook", "RegisterHook",
     "RegisterInitGameStatePostHook", "RegisterLoadMapPreHook",
     "StaticConstructObject", "StaticFindObject",
+    "RegisterKeyBind", "Key.F5", "Key.F9", "ExecuteInGameThread",
 }

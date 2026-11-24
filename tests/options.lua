@@ -85,7 +85,7 @@ local testResult, testError = pcall(function()
     assert(B.config.drag and not B.config.graphics and not B.config.inventoryStats)
     hooks.Open(ref(page))
     hooks.Open(ref(page))
-    assert(#optionRows == 9)
+    assert(#optionRows == 10)
     local selector = optionRows[#optionRows].MyControl
     assert(selector.text == "Low" and selector.ApplyOptionSettings == false)
     selector.CurrentValue = 2

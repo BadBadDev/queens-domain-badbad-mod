@@ -10,6 +10,7 @@ local features = {
     { "inventoryStats", "Inventory healing stat" },
     { "statusNames", "Status effect names" },
     { "travelStride", "Travel Stride" },
+    { "quickSave", "Quick Save / Load" },
 }
 local saved, known = {}, {}
 for _, feature in ipairs(features) do

@@ -113,6 +113,7 @@ local optional = {
     shimmer = "shimmer",
     statusnames = "statusNames",
     travelstride = "travelStride",
+    quicksave = "quickSave",
 }
 for _, name in ipairs({
     "graphics",
@@ -123,6 +124,7 @@ for _, name in ipairs({
     "widescreen",
     "travelstride",
     "statusnames",
+    "quicksave",
 }) do
     if not optional[name] or B.config[optional[name]] then
         local ok, err = pcall(function()
