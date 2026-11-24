@@ -1,6 +1,6 @@
 -- UE4SS entry point: loads BBM modules, shares settings and binds hooks as game classes become available.
 local dir = assert(debug.getinfo(1, "S").source:sub(2):match("^(.*[/\\])"))
-local B = { dir = dir, warned = {}, reset = {}, shimmer = "low" }
+local B = { dir = dir, warned = {}, reset = {}, shimmer = "medium" }
 
 function B.log(s)
     print("[BBM] " .. s .. "\n")
@@ -37,6 +37,9 @@ function B.hook(path, fn)
         hooks[path] = { callbacks = {} }
     end
     table.insert(hooks[path].callbacks, fn)
+    return function()
+        return hooks[path].bound == true
+    end
 end
 
 local function bindAvailableGameHooks()
@@ -67,7 +70,7 @@ local function bindAvailableGameHooks()
         end
     end
 end
-local validShimmerLevels = { low = true, medium = true, high = true }
+local validShimmerLevels = { low = true, medium = true, high = true, arrow = true }
 local pref = dir .. "..\\shimmer.txt"
 local f = io.open(pref, "r")
 if f then
@@ -76,7 +79,7 @@ if f then
     if validShimmerLevels[level] then
         B.shimmer = level
     else
-        B.warn("shimmer.txt", "invalid level; using low")
+        B.warn("shimmer.txt", "invalid level; using " .. B.shimmer)
     end
 end
 
@@ -104,7 +107,14 @@ end
 B.config = assert(loadfile(dir .. "config.lua"))()
 assert(loadfile(dir .. "options.lua"))(B)
 
-local optional = { graphics = "graphics", drag = "drag", shimmer = "shimmer", statusnames = "statusNames" }
+local optional = {
+    graphics = "graphics",
+    drag = "drag",
+    shimmer = "shimmer",
+    statusnames = "statusNames",
+    travelstride = "travelStride",
+    quicksave = "quickSave",
+}
 for _, name in ipairs({
     "graphics",
     "monsterhealthbar",
@@ -112,7 +122,9 @@ for _, name in ipairs({
     "shimmer",
     "iteminfo",
     "widescreen",
+    "travelstride",
     "statusnames",
+    "quicksave",
 }) do
     if not optional[name] or B.config[optional[name]] then
         local ok, err = pcall(function()

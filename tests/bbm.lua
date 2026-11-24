@@ -2,10 +2,12 @@
 local suites = {
     "widescreen",
     "statusnames",
+    "travelstride",
     "itemstats",
     "monsterhealthbar",
     "shimmer_preferences",
     "options",
+    "quicksave",
 }
 
 for _, name in ipairs(suites) do
