@@ -3,7 +3,7 @@ local support = require("tests.support")
 local test = support.new()
 local B, hooks = test.api, test.hooks
 local obj, ref, noop = support.object, support.ref, support.noop
-B.config.damageNumbers = true
+B.config.enemyHpBars = 2
 B.config.damageSeconds = 0.85
 
 local damageLabels, hpLabels = {}, {}
@@ -157,8 +157,8 @@ hooks.Tick(combat)
 assert(damageLabels[1].vis == 1)
 assert(headerSlot.autoSize and headerSlot.anchors.Maximum.X == 0 and headerSlot.offsets.Right == 96)
 
--- HP labels are unconditional; disabling damage skips both hit-event bindings.
-B.config.damageNumbers = false
+-- Bar-only mode keeps the numeric HP readout but installs no hit hooks.
+B.config.enemyHpBars = 1
 for path in pairs(hooks) do
     hooks[path] = nil
 end
@@ -170,3 +170,24 @@ assert(
         and not hooks["Took Damage"]
         and hpLabels[#hpLabels].text == "9 / 100"
 )
+
+-- Off suppresses both native bars even if the game shows them again on a retarget.
+B.config.enemyHpBars = 0
+local boss = obj()
+for _, widget in ipairs({ bar, boss }) do
+    widget.visibility = 0
+    widget.GetVisibility = function(s)
+        return s.visibility
+    end
+    widget.SetVisibility = function(s, v)
+        s.visibility = v
+    end
+end
+combat:get().EnemyStatusZone.BossHealthBar = boss
+local hpCount = #hpLabels
+test.loadModule("monsterhealthbar")
+hooks.Tick(combat)
+assert(bar.visibility == 1 and boss.visibility == 1 and #hpLabels == hpCount)
+bar.visibility = 0
+hooks.Tick(combat)
+assert(bar.visibility == 1 and not hooks.SetTarget and not hooks["Took Damage"])

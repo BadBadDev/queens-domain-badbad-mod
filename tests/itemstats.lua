@@ -11,7 +11,7 @@ B.lib = function()
             out.Config = config
         end,
         GetWeaponStats = function()
-            return obj({ PowerMeterTime = 0.75 })
+            return obj({ PowerMeterTime = 0.75, PrimaryAttackPower = 1.5, SecondaryAttackPower = 3 })
         end,
         GetDaggerStats = function()
             return obj({ CooldownTime = 5, DamageMult = 0.7 })
@@ -49,9 +49,9 @@ local item = obj({
     end,
     DataTags = { ForEach = function() end },
 })
-local function rows()
+local function rows(baseValuesOnly)
     local out = {}
-    for _, p in ipairs(stats.buildItemStatRows(inventory, item)) do
+    for _, p in ipairs(stats.buildItemStatRows(inventory, item, baseValuesOnly)) do
         out[p[1]] = p[2]
     end
     return out
@@ -80,6 +80,7 @@ item.Equippable = true
 item.EquipSlot = 3
 assert(rows()["Primary Attack"] == "15 (+20%) = 18" and rows()["Secondary Attack"] == "30 (+20%) = 36")
 assert(rows()["Stamina recovery (base)"] == "750 ms")
+assert(rows(true)["Primary Attack"] == "15" and rows(true)["Secondary Attack"] == "30")
 item.EquipSlot = 2
 assert(rows().Return == "5 s" and rows().Attack == "7")
 name = "Charm"

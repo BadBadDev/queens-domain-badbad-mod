@@ -13,6 +13,8 @@
 -- fade in and out with them.
 --
 local B = ...
+local showEnemyBars = B.config.enemyHpBars ~= 0
+local showDamage = B.config.enemyHpBars == 2
 local Config = {
     PlayerSize = 14, -- font sizes
     EnemySize = 15,
@@ -360,15 +362,25 @@ local function updateHealthReadouts(Context)
     local EnemyBar = Valid(Zone) and Zone.EnemyHealthBar_base or nil
     local BossBar = Valid(Zone) and Zone.BossHealthBar or nil
     local FontSource = Valid(EnemyBar) and EnemyBar.EnemyName or nil
-    if B.config.damageNumbers then
+    if showDamage then
         if Valid(EnemyBar) then
             trackEnemyHpLoss(EnemyBar, EnemyBar.CurrentHP)
         end
         refreshLastHitReadout(EnemyBar, Config.EnemySize)
         refreshLastHitReadout(BossBar, Config.BossSize)
     end
-    updateMonsterHpText(EnemyBar, FontSource, Config.EnemySize)
-    updateMonsterHpText(BossBar, FontSource, Config.BossSize)
+    if showEnemyBars then
+        updateMonsterHpText(EnemyBar, FontSource, Config.EnemySize)
+        updateMonsterHpText(BossBar, FontSource, Config.BossSize)
+    else
+        -- The native HUD can show these widgets again when the target changes.
+        if Valid(EnemyBar) and EnemyBar:GetVisibility() ~= 1 then
+            EnemyBar:SetVisibility(1)
+        end
+        if Valid(BossBar) and BossBar:GetVisibility() ~= 1 then
+            BossBar:SetVisibility(1)
+        end
+    end
     if Valid(Cluster) then
         updatePlayerHpText(Cluster.PlayerLifeBar, FontSource)
     end
@@ -385,7 +397,7 @@ local function updateHealthReadoutsSafely(Context)
 end
 
 B.hook(HudTick, updateHealthReadoutsSafely)
-if B.config.damageNumbers then
+if showDamage then
     local base = "/Game/UI/HUD/Widgets/EnemyHealthBar/"
     B.hook(base .. "EnemyHealthBar_base.EnemyHealthBar_base_C:SetTarget", onEnemyBarTargetChanged)
     B.hook(base .. "EnemyHealthBar_base.EnemyHealthBar_base_C:Damaged", function(ctx, newHP)

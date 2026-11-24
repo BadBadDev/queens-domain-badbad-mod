@@ -5,7 +5,6 @@ local suites = {
     "travelstride",
     "itemstats",
     "monsterhealthbar",
-    "shimmer_preferences",
     "options",
     "quicksave",
 }
