@@ -55,6 +55,4 @@ Your monument save stays untouched. Each slot keeps `BBM_Quick_World<N>.sav` and
 3. Download [BadBadMod.zip from the latest release](https://github.com/BadBadDev/queens-domain-badbad-mod/releases/latest/download/BadBadMod.zip) and extract it into `ue4ss\Mods`.
 4. Keep the bundled `BadBadMod\enabled.txt` file, or add `BadBadMod : 1` in `ue4ss\Mods\mods.txt`. Either method enables the mod. Launch the game and look for the settings under **Options > Video**.
 
-**Updating from v1.2.0:** Use the new `features.ini`, then reselect your preferences under **Options > Video > BBM Settings**. Shimmer now uses one five-level setting; `shimmer.txt` is no longer read. **Enemy HP bars** replaces the old damage-number switch. This settings change does not affect your saves.
-
 To uninstall, delete the `BadBadMod` folder.
