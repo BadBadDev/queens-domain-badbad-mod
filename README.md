@@ -2,7 +2,7 @@
 
 I made BadBad Mod for the way I like to play Queen's Domain. It brings together my own quality-of-life tweaks and features I liked from other mods. I'm sharing it in case you like playing this way too. 🙂
 
-**v1.3.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.3.1** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -29,7 +29,7 @@ I made BadBad Mod for the way I like to play Queen's Domain. It brings together 
 
 Open **Options > Video** and scroll to **BBM Settings**.
 
-Highlight **Item description stats** to see a new item every 3 seconds, including a melee weapon and a throwable. Highlight **Status effect names** to see Poison, Weaken, and Burn cycle every 2 seconds. Settings without a visual preview explain their effect in the right-hand panel.
+Highlight a setting to see a preview or a short description.
 
 ## Quick Save / Load
 

@@ -80,21 +80,10 @@ local function place(panel, child, x, y, width, height)
     return child
 end
 
-local function label(page, text, x, y, width, height, size, align, style)
-    local textBlock = mod.widget(page, "TextBlock")
-    if style then
-        textBlock:SetFont(style.Font)
-        textBlock:SetColorAndOpacity(style.ColorAndOpacity)
-        textBlock:SetShadowOffset(style.ShadowOffset)
-        textBlock:SetShadowColorAndOpacity(style.ShadowColorAndOpacity)
-    else
-        textBlock:SetFont(page.Vsync.FieldLabel.Font)
-        local font = textBlock.Font
-        font.Size = size
-        textBlock:SetFont(font)
-        textBlock:SetShadowOffset({ X = 2, Y = 2 })
-        textBlock:SetShadowColorAndOpacity({ R = 0, G = 0, B = 0, A = 1 })
-    end
+local function label(page, text, x, y, width, height, style, align)
+    local textBlock = StaticConstructObject(mod.lib("/Script/CommonUI.CommonTextBlock"), page.WidgetTree)
+    assert(mod.valid(textBlock), "could not create native preview text")
+    textBlock:SetStyle(style or page.Vsync.FieldLabel.Style)
     textBlock:SetText(FText(text))
     textBlock:SetJustification(align or 0)
     textBlock:SetAutoWrapText(true)
@@ -148,12 +137,10 @@ local function updateItemCard(page, elapsed, enabled)
     local index = math.floor(elapsed / secondsPerItem) % #sampleItems + 1
     local card = state.itemCard
     if not card then
-        previewAsset("/Game/UI/Widgets/FS_InspectItem.FS_InspectItem_C")
-        previewAsset("/Game/UI/Menus/StatusMenu/WeaponStats.WeaponStats_C")
         card = {
-            titleStyle = mod.lib("/Game/UI/Widgets/FS_InspectItem.FS_InspectItem_C:WidgetTree.Title"),
-            statStyle = mod.lib("/Game/UI/Menus/StatusMenu/WeaponStats.WeaponStats_C:WidgetTree.Power"),
-            loreStyle = previewAsset("/Game/UI/UI_Style/FontStyles/DescriptionRichText.DescriptionRichText"),
+            titleStyle = previewAsset("/Game/UI/UI_Style/FontStyles/BigTextStyle.BigTextStyle_C"),
+            statStyle = previewAsset("/Game/UI/UI_Style/FontStyles/StatText.StatText_C"),
+            loreClass = previewAsset("/Game/UI/Widgets/FS_DescriptionText.FS_DescriptionText_C"),
             stats = {},
         }
         state.itemCard = card
@@ -166,19 +153,20 @@ local function updateItemCard(page, elapsed, enabled)
         local icon = mod.widget(page, "Image")
         icon:SetBrushFromTexture(item.ItemIcon, false)
         place(state.panel, icon, 126, 168, 108, 108)
-        label(page, item.Name:ToString(), 254, 198, 648, 76, nil, 0, card.titleStyle)
+        label(page, item.Name:ToString(), 254, 198, 648, 76, card.titleStyle)
         local statsTop = 709 - #rows * 48
-        local lore = mod.widget(page, "RichTextBlock")
-        lore:SetTextStyleSet(card.loreStyle)
-        lore.AutoWrapText = true
-        lore:SetText(item["Item Description"])
+        local lore = mod.lib("/Script/UMG.Default__WidgetBlueprintLibrary")
+            :Create(page, card.loreClass, page:GetOwningPlayer())
+        assert(mod.valid(lore), "could not create inventory description widget")
         lore:SetClipping(1)
         place(state.panel, lore, 126, 300, 788, statsTop - 316)
+        -- Set the localized lore directly: the inspect screen's item binding expects its inventory context.
+        lore.MainTextBlock:SetText(item["Item Description"])
         card.stats = {}
         for rowIndex, row in ipairs(rows) do
             local top = statsTop + (rowIndex - 1) * 48
-            table.insert(card.stats, label(page, row[1], 126, top, 477, 47, nil, 0, card.statStyle))
-            table.insert(card.stats, label(page, row[2], 612, top, 300, 47, nil, 2, card.statStyle))
+            table.insert(card.stats, label(page, row[1], 126, top, 477, 47, card.statStyle))
+            table.insert(card.stats, label(page, row[2], 612, top, 300, 47, card.statStyle, 2))
         end
         card.index, card.enabled = index, nil
     end
@@ -251,21 +239,21 @@ local function frameScene(page, visualizer, kind, enabled)
     place(state.panel, image, 0, 0, 1040, 880)
     if status then
         local overlay = place(state.panel, mod.widget(page, "Image"), 0, 0, 1040, 880)
-        local name = label(page, "", 30, 742, 260, 38, 22)
+        local name = label(page, "", 30, 742, 260, 38)
         name:SetVisibility(enabled and 3 or 1)
         state.status = { label = name, overlay = overlay, materials = {} }
     elseif graphics then
-        label(page, enabled and "Resolution sample: full" or "Resolution sample: retro", 35, 38, 950, 75, 32)
+        label(page, enabled and "Resolution sample: full" or "Resolution sample: retro", 35, 38, 950, 75)
     elseif damage and enabled ~= 0 then
         backdrop(page, 227, 140, 586, 114)
-        label(page, "Skeleton", 250, 149, 380, 50, 29)
+        label(page, "Skeleton", 250, 149, 380, 50)
         if enabled == 2 then
-            state.hit = label(page, "-12", 643, 149, 145, 50, 29, 2)
+            state.hit = label(page, "-12", 643, 149, 145, 50, nil, 2)
         end
         local bar = mod.widget(page, "ProgressBar")
         bar:SetFillColorAndOpacity({ R = 0.62, G = 0.065, B = 0.036, A = 1 })
         state.bar = place(state.panel, bar, 251, 202, 535, 36)
-        state.hp = label(page, "", 251, 201, 535, 48, 23, 1)
+        state.hp = label(page, "", 251, 201, 535, 48, nil, 1)
     end
 end
 
@@ -331,8 +319,16 @@ function mod.updateVideoPreview(page, key, saved)
             local help = explanations[kind]
             if help then
                 backdrop(page, 86, 244, 868, 392)
-                label(page, help[1], 126, 284, 788, 64, 30)
-                label(page, help[2], 126, 374, 788, 224, 24)
+                label(
+                    page,
+                    help[1],
+                    126,
+                    284,
+                    788,
+                    64,
+                    previewAsset("/Game/UI/UI_Style/FontStyles/BigTextStyle.BigTextStyle_C")
+                )
+                label(page, help[2], 126, 374, 788, 224)
             elseif kind ~= "itemStats" then
                 frameScene(page, vis, kind, enabled)
             end
