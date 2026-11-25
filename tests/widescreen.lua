@@ -159,9 +159,17 @@ do
             and border.vis == 3
             and sceneCamera.AspectRatio == 16 / 9
     )
-    class, width = "GameMenu_C", 2580
-    update(box)
-    assert(box:get().SizeBox_35.WidthOverride == 2580 and border.vis == 1)
+    width = 2580
+    for _, menuClass in ipairs({ "GameMenu_C", "DieUI_C" }) do
+        class = menuClass
+        box:get().ForcedAspectSizeBox, box:get().SizeBox_35, border.vis = nativeBox(), nativeBox(), 3
+        update(box)
+        assert(
+            box:get().ForcedAspectSizeBox.WidthOverride == 2580
+                and box:get().SizeBox_35.WidthOverride == 2580
+                and border.vis == 1
+        )
+    end
     class = "OtherMenu_C"
     box:get().SizeBox_35, border.vis = nativeBox(), 3
     update(box)
