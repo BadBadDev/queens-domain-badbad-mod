@@ -73,8 +73,8 @@ end
 B.config = assert(loadfile(dir .. "config.lua"))()
 local delay = B.config.travelStrideDelaySeconds
 if type(delay) ~= "number" or not (delay >= 0 and delay < math.huge) then
-    B.warn("config.lua", "travelStrideDelaySeconds must be a finite non-negative number; using 8 seconds")
-    B.config.travelStrideDelaySeconds = 8
+    B.warn("config.lua", "travelStrideDelaySeconds must be a finite non-negative number; using 12 seconds")
+    B.config.travelStrideDelaySeconds = 12
 end
 assert(loadfile(dir .. "options.lua"))(B)
 

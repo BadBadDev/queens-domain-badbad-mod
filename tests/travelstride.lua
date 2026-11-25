@@ -124,3 +124,11 @@ for _, reset in ipairs(B.reset) do
 end
 nativeSpeedUpdate(100)
 assert(not B.hasTravelStride(player), "a fresh world starts its own quiet period")
+
+B.config = dofile("Scripts/config.lua")
+test.loadModule("travelstride")
+nativeSpeedUpdate(200)
+nativeSpeedUpdate(211.99)
+assert(not B.hasTravelStride(player), "the shipped default must wait the full 12 seconds")
+nativeSpeedUpdate(212)
+assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 500)
