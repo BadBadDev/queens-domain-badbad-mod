@@ -126,6 +126,8 @@ local function viewportAspect(world)
     return viewport.Y > 0 and viewport.X / viewport.Y or 0
 end
 
+local wideMenuOwners = { OptionsMenu_C = true, TitleScreenUI_C = true, GameMenu_C = true, DieUI_C = true }
+
 local function fitMenuCanvas(context)
     local box = context:get()
     local owner = box:GetOuter():GetOuter()
@@ -133,7 +135,7 @@ local function fitMenuCanvas(context)
         return
     end
     local kind = owner:GetClass():GetFName():ToString()
-    if kind ~= "OptionsMenu_C" and kind ~= "TitleScreenUI_C" and kind ~= "GameMenu_C" then
+    if not wideMenuOwners[kind] then
         return
     end
     local aspect = viewportAspect(box)

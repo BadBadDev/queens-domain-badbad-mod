@@ -2,7 +2,7 @@
 
 I made BadBad Mod for the way I like to play Queen's Domain. It brings together my own quality-of-life tweaks and features I liked from other mods. I'm sharing it in case you like playing this way too. 🙂
 
-**v1.4.1** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.4.2** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -15,7 +15,7 @@ I made BadBad Mod for the way I like to play Queen's Domain. It brings together 
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
 | **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
-| **Widescreen** | The title screen, settings menus, and Status & Inventory use the extra width without stretching controls. In gameplay, the camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
+| **Widescreen** | The title screen, Game Over screen, settings menus, and Status & Inventory use the extra width without stretching controls. In gameplay, the camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 | **[Quick Save / Load](#quick-save--load)** | **F5** saves your progress separately for the current slot. **F9** reloads it without quitting, even if the game has made a newer recovery save. |
 | **Travel Stride** | **Off by default** for players who prefer the game's original pace. Turn it on in **Options > Video** and restart. After a delay out of combat (12 seconds by default), ground speed increases by 25% and sword dashes recharge twice as fast. Set `travelStrideDelaySeconds` in [config.lua](Scripts/config.lua) to change the delay. Jump distance stays the same. Enemy aggro or a combat hit removes the buff and restarts the timer. |
 
