@@ -248,9 +248,9 @@ local function setNameRowExpanded(label, expanded)
 end
 
 -- A preview owns its labels; don't register the sample as a gameplay target or retain it in the HUD caches.
-function B.createEnemyBarSample(bar, showDamage)
+function B.createEnemyBarSample(bar, previewDamage)
     local hp = createMonsterReadout(bar, bar.EnemyName, Config.EnemySize)
-    local damage = showDamage and createNameRowDamageLabel(bar, Config.EnemySize)
+    local damage = previewDamage and createNameRowDamageLabel(bar, Config.EnemySize)
     local material = bar.Fill:GetDynamicMaterial()
     assert(Valid(material), "enemy bar preview fill material unavailable")
     return function(current, maximum, lastHit)
