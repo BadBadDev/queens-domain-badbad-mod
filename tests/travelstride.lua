@@ -3,6 +3,7 @@ local test = require("tests.support").new()
 local support = require("tests.support")
 local obj, ref = support.object, support.ref
 local B, hooks = test.api, test.hooks
+B.config.travelStrideDelaySeconds = 2.5
 local world = obj()
 local function getWorld()
     return world
@@ -69,9 +70,9 @@ assert(not B.hasTravelStride(player), "an already-alert enemy must prevent activ
 enemy.bAggrod = false
 hooks.UnAggrod(ref(enemy))
 nativeSpeedUpdate(12)
-nativeSpeedUpdate(19.99)
+nativeSpeedUpdate(14.49)
 assert(not B.hasTravelStride(player))
-nativeSpeedUpdate(20)
+nativeSpeedUpdate(14.5)
 assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 500)
 nativeSpeedUpdate(20.1, 300)
 assert(move.MaxWalkSpeed == 375, "use the current native cap, including debuffs")
@@ -98,7 +99,7 @@ sword:ReceiveTick(0.25)
 assert(progress == 0.5, "airborne sword recharge continues at 2x, not recursively")
 grounded = true
 nativeSpeedUpdate(21)
-assert(move.MaxWalkSpeed == 500, "landing must not start a new eight-second timer")
+assert(move.MaxWalkSpeed == 500, "landing must not restart the quiet timer")
 grounded = false
 move.Velocity = { X = 500, Y = 0, Z = -15 }
 hooks.K2_OnMovementModeChanged(ref(player))

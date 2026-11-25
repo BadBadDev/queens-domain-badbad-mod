@@ -2,7 +2,7 @@
 
 I made BadBad Mod for the way I like to play Queen's Domain. It brings together my own quality-of-life tweaks and features I liked from other mods. I'm sharing it in case you like playing this way too. 🙂
 
-**v1.3.1** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.4.0** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -10,14 +10,14 @@ I made BadBad Mod for the way I like to play Queen's Domain. It brings together 
 | --- | --- |
 | **Graphics** | Native resolution, temporal anti-aliasing and 16x anisotropic filtering, without retro pixel filtering or dithering. Your saved video preferences stay intact. |
 | **Pickup shimmer** | Choose **Off** for the game's original pickups, **Low** for a subtle pulse, **Mid** for a stronger pulse, **High** for a pale-gold beam, or **Over Here!** for a bouncing red arrow. |
-| **Enemy HP bars** | **Off** hides enemy and boss bars. **HP bar** shows current/max HP. **HP bar + damage** (default) also flashes the last hit beside the enemy's name. Preview the modes in Video settings and restart to apply. Your own HP readout is unchanged. |
+| **Enemy HP bars** | **Off** hides enemy and boss bars. **HP bar** shows current/max HP. **HP bar + damage** (default) also flashes the last hit beside the enemy's name. Video settings demonstrate all three modes on the game's own enemy bar. Restart to apply; your own HP readout is unchanged. |
 | **Drag to equip** | In **Status & Inventory**, drag a weapon, throwable or charm onto a compatible slot. Normal equip rules and click controls still apply. |
 | **Item stats** | Beneath the lore, weapons list Attack and base stamina recovery time; throwables list Attack and Return time. Buffs show their effects and remedies say what they cure. |
 | **Healing bonus** | The status screen shows your healing bonus as a percentage; herbs and potions show the extra HP they restore. |
 | **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
-| **Widescreen** | The camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
+| **Widescreen** | The title screen, settings menus, and Status & Inventory use the extra width without stretching controls. In gameplay, the camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 | **[Quick Save / Load](#quick-save--load)** | **F5** saves your progress separately for the current slot. **F9** reloads it without quitting, even if the game has made a newer recovery save. |
-| **Travel Stride** | **Off by default** for players who prefer the game's original pace. If you want faster exploration and backtracking, turn it on in **Options > Video** and restart. After 8 seconds out of combat, ground speed increases by 25% and sword dashes recharge twice as fast. Jumping or stepping off a ledge removes the extra speed while in the air (preventing sequence breaking by using longer jumps). Enemy aggro or a combat hit removes the buff and restarts the timer. |
+| **Travel Stride** | **Off by default** for players who prefer the game's original pace. Turn it on in **Options > Video** and restart. After a delay out of combat (8 seconds by default), ground speed increases by 25% and sword dashes recharge twice as fast. Set `travelStrideDelaySeconds` in [config.lua](Scripts/config.lua) to change the delay. Jump distance stays the same. Enemy aggro or a combat hit removes the buff and restarts the timer. |
 
 ### Reading the numbers (Examples)
 

@@ -191,3 +191,20 @@ assert(bar.visibility == 1 and boss.visibility == 1 and #hpLabels == hpCount)
 bar.visibility = 0
 hooks.Tick(combat)
 assert(bar.visibility == 1 and not hooks.SetTarget and not hooks["Took Damage"])
+
+-- A preview can be opened at the title screen before any real target or HUD tick.
+test.env.FName = tostring
+local fill
+bar.Fill.GetDynamicMaterial = function()
+    return obj({
+        SetScalarParameterValue = function(_, _, value)
+            fill = value
+        end,
+    })
+end
+local sample = B.createEnemyBarSample(bar, true)
+sample(28, 40, 12)
+assert(fill == 0.7 and hpLabels[#hpLabels].text == "28 / 40")
+assert(damageLabels[#damageLabels].text == "-12" and damageLabels[#damageLabels].vis == 3)
+sample(28, 40, nil)
+assert(damageLabels[#damageLabels].vis == 1 and headerSlot.autoSize)
