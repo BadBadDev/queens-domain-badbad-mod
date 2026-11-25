@@ -117,6 +117,65 @@ B.hook(
     "/Game/Player/StatusEffectVisualizers/StatusEffectOverlay.StatusEffectOverlay_C:Tick",
     fitStatusEffectBorder
 )
+
+-- The native Tick resets both nested ScaleToFit boxes. Give the menu more
+-- layout units across, not a horizontal render scale (which also stretches text).
+local function viewportAspect(world)
+    widgetLayoutLibrary = widgetLayoutLibrary or B.lib("/Script/UMG.Default__WidgetLayoutLibrary")
+    local viewport = widgetLayoutLibrary:GetViewportSize(world)
+    return viewport.Y > 0 and viewport.X / viewport.Y or 0
+end
+
+local function fitMenuCanvas(context)
+    local box = context:get()
+    local owner = box:GetOuter():GetOuter()
+    if not B.valid(owner) then
+        return
+    end
+    local kind = owner:GetClass():GetFName():ToString()
+    if kind ~= "OptionsMenu_C" and kind ~= "TitleScreenUI_C" and kind ~= "GameMenu_C" then
+        return
+    end
+    local aspect = viewportAspect(box)
+    if aspect > 16 / 9 + 0.001 then
+        local width = 1080 * aspect
+        if math.abs(box.ForcedAspectSizeBox.WidthOverride - width) > 0.5 then
+            box.ForcedAspectSizeBox:SetWidthOverride(width)
+        end
+        if math.abs(box.SizeBox_35.WidthOverride - width) > 0.5 then
+            box.SizeBox_35:SetWidthOverride(width)
+        end
+        if box.Border:GetVisibility() ~= 1 then
+            box.Border:SetVisibility(1)
+        end
+    end
+end
+B.hook("/Game/UI/Widgets/UIAspectRatioBox.UIAspectRatioBox_C:Tick", fitMenuCanvas)
+
+-- Both scenes write their stock projection before the camera manager reads it.
+local function widenMenuProjection(world, camera)
+    local aspect = viewportAspect(world)
+    if aspect <= 16 / 9 + 0.001 then
+        return
+    end
+    if B.valid(camera) and camera.AspectRatio > 0 and math.abs(camera.AspectRatio - aspect) > 0.001 then
+        local halfFov = math.rad(camera.FieldOfView / 2)
+        camera:SetFieldOfView(math.deg(2 * math.atan(math.tan(halfFov) * aspect / camera.AspectRatio)))
+        camera:SetAspectRatio(aspect)
+    end
+end
+B.hook("/Game/LD45/Maps/title_screen.title_screen_C:ReceiveTick", function(context)
+    local level = context:get()
+    local actor = level.CameraActor_1_ExecuteUbergraph_title_screen_RefProperty
+    if B.valid(actor) then
+        widenMenuProjection(level, actor.CameraComponent)
+    end
+end)
+B.hook("/Game/UI/Menus/OptionsMenu/VideoConfigVisualizer.VideoConfigVisualizer_C:Update", function(context)
+    local scene = context:get()
+    widenMenuProjection(scene, scene.Camera)
+end)
+
 table.insert(B.reset, function()
     edgeOffsets, nextViewportCheck, trackedCameraId, isWide = {}, 0, nil, false
     widgetLayoutLibrary = nil

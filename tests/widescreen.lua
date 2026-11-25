@@ -81,3 +81,89 @@ do
     fit(overlay)
     assert(image.RenderTransform.Scale.X == 1 and image.RenderTransform.Scale.Y == 1)
 end
+
+do
+    local sceneCamera = obj({
+        AspectRatio = 16 / 9,
+        FieldOfView = 71.5,
+        SetFieldOfView = function(s, v)
+            s.FieldOfView = v
+        end,
+        SetAspectRatio = function(s, v)
+            s.AspectRatio = v
+        end,
+    })
+    local class = "OptionsMenu_C"
+    local owner = obj({
+        GetClass = function()
+            return {
+                GetFName = function()
+                    return {
+                        ToString = function()
+                            return class
+                        end,
+                    }
+                end,
+            }
+        end,
+    })
+    local function nativeBox()
+        return {
+            WidthOverride = 1920,
+            SetWidthOverride = function(s, v)
+                s.WidthOverride = v
+            end,
+        }
+    end
+    local border = {
+        vis = 3,
+        GetVisibility = function(s)
+            return s.vis
+        end,
+        SetVisibility = function(s, v)
+            s.vis = v
+        end,
+    }
+    local box = ref(obj({
+        GetOuter = function()
+            return {
+                GetOuter = function()
+                    return owner
+                end,
+            }
+        end,
+        Border = border,
+        ForcedAspectSizeBox = nativeBox(),
+        SizeBox_35 = nativeBox(),
+    }))
+    local update = hooks["/Game/UI/Widgets/UIAspectRatioBox.UIAspectRatioBox_C:Tick"]
+    width = 2580
+    update(box)
+    assert(
+        box:get().ForcedAspectSizeBox.WidthOverride == 2580
+            and box:get().SizeBox_35.WidthOverride == 2580
+            and border.vis == 1
+    )
+    local scene = ref(obj({ Camera = sceneCamera }))
+    local projection =
+        hooks["/Game/UI/Menus/OptionsMenu/VideoConfigVisualizer.VideoConfigVisualizer_C:Update"]
+    projection(scene)
+    assert(sceneCamera.AspectRatio == width / 1080 and math.abs(sceneCamera.FieldOfView - 88.1) < 0.1)
+    width = 1920
+    sceneCamera.AspectRatio, sceneCamera.FieldOfView = 16 / 9, 71.5
+    projection(scene)
+    box:get().ForcedAspectSizeBox, box:get().SizeBox_35, border.vis = nativeBox(), nativeBox(), 3
+    update(box)
+    assert(
+        box:get().ForcedAspectSizeBox.WidthOverride == 1920
+            and border.vis == 3
+            and sceneCamera.AspectRatio == 16 / 9
+    )
+    class, width = "GameMenu_C", 2580
+    update(box)
+    assert(box:get().SizeBox_35.WidthOverride == 2580 and border.vis == 1)
+    class = "OtherMenu_C"
+    box:get().SizeBox_35, border.vis = nativeBox(), 3
+    update(box)
+    assert(box:get().SizeBox_35.WidthOverride == 1920 and border.vis == 3)
+end

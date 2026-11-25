@@ -1,6 +1,6 @@
 -- Shortens peaceful ground travel without extending a running jump or altering dash distance.
 local B = ...
-local QUIET_SECONDS, GROUND_FACTOR = 8, 1.25
+local quietSeconds, GROUND_FACTOR = B.config.travelStrideDelaySeconds, 1.25
 local PLAYER = "/Game/Player/FS_PlayerChar.FS_PlayerChar_C:"
 local ENEMY = "/Game/Enemies/EnemyBase.EnemyBase_C:"
 local SWORD = "/Game/Player/Assets/Blueprints/FlyingSwordChargeLogic.FlyingSwordChargeLogic_C:"
@@ -44,7 +44,7 @@ local function removeGroundBonus(player)
 end
 
 local function interruptTravel(player, now)
-    state.readyAt = now + QUIET_SECONDS
+    state.readyAt = now + quietSeconds
     state.active = false
     removeGroundBonus(player)
 end
@@ -82,7 +82,7 @@ local function resetForPlayer(player, now)
     state = {
         id = player:GetAddress(),
         path = assert(player:GetFullName():match("^%S+ (.+)$"), "Missing player object path"),
-        readyAt = now + QUIET_SECONDS,
+        readyAt = now + quietSeconds,
         nextScan = now,
         active = false,
     }
@@ -104,7 +104,7 @@ local function updateStrideAfterNativeSpeed(context)
             end
         end
         bindingsReady = true
-        state.readyAt = now + QUIET_SECONDS
+        state.readyAt = now + quietSeconds
     end
     local move = player.CharacterMovement
     if

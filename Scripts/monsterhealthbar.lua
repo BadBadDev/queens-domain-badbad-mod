@@ -99,12 +99,7 @@ local function centerHpTextInFill(bar, layer, text)
 end
 
 -- A sibling of the native fill, not a child of the game's disposable damage segments.
-local function getOrCreateMonsterReadout(Bar, FontSource, Size)
-    local Key = Bar:GetAddress()
-    local Label = Labels[Key]
-    if Label ~= nil and Valid(Label.Text) then
-        return Label
-    end
+local function createMonsterReadout(Bar, FontSource, Size)
     local layer = B.widget(Bar, "Overlay")
     layer:SetVisibility(3)
     local layerSlot = Bar.HealthBar:AddChildToCanvas(layer)
@@ -112,9 +107,15 @@ local function getOrCreateMonsterReadout(Bar, FontSource, Size)
     layerSlot:SetZOrder(100)
     local Text = createHealthTextBlock(Bar, FontSource, Size)
     centerHpTextInFill(Bar, layer, Text)
-    Label = { Text = Text }
-    Labels[Key] = Label
-    return Label
+    return { Text = Text }
+end
+
+local function getOrCreateMonsterReadout(Bar, FontSource, Size)
+    local key = Bar:GetAddress()
+    if not Labels[key] or not Valid(Labels[key].Text) then
+        Labels[key] = createMonsterReadout(Bar, FontSource, Size)
+    end
+    return Labels[key]
 end
 
 -- Label inside an overlay (player life bar), centred on the bar.
@@ -246,6 +247,24 @@ local function setNameRowExpanded(label, expanded)
     end
 end
 
+-- A preview owns its labels; don't register the sample as a gameplay target or retain it in the HUD caches.
+function B.createEnemyBarSample(bar, previewDamage)
+    local hp = createMonsterReadout(bar, bar.EnemyName, Config.EnemySize)
+    local damage = previewDamage and createNameRowDamageLabel(bar, Config.EnemySize)
+    local material = bar.Fill:GetDynamicMaterial()
+    assert(Valid(material), "enemy bar preview fill material unavailable")
+    return function(current, maximum, lastHit)
+        material:SetScalarParameterValue(FName("Fill"), current / maximum)
+        updateLabelText(hp, formatCurrentAndMaxHp(current, maximum))
+        if damage then
+            setReadoutVisibility(damage, lastHit ~= nil)
+            setNameRowExpanded(damage, lastHit ~= nil)
+            if lastHit then
+                updateLabelText(damage, "-" .. lastHit)
+            end
+        end
+    end
+end
 local function refreshLastHitReadout(bar, size)
     if not Valid(bar) then
         return

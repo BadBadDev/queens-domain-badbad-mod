@@ -20,7 +20,10 @@ local explanations = {
     },
     travelStride = {
         "Travel Stride",
-        "After 8 seconds out of combat, move 25% faster on the ground and recharge sword dashes twice as fast. Enemy aggro or a combat hit ends the boost. Jump distance stays the same.",
+        ("After %s %s out of combat, move 25%% faster on the ground and recharge sword dashes twice as fast. Enemy aggro or a combat hit ends the boost. Jump distance stays the same."):format(
+            mod.config.travelStrideDelaySeconds,
+            mod.config.travelStrideDelaySeconds == 1 and "second" or "seconds"
+        ),
     },
     quickSave = {
         "Quick Save / Load",
@@ -60,7 +63,7 @@ local function closePanel()
     end
     if state then
         state.panel, state.capture, state.target, state.itemCard = nil, nil, nil, nil
-        state.bar, state.hp, state.hit, state.lastPhase, state.status = nil, nil, nil, nil, nil
+        state.updateEnemyBar, state.lastPhase, state.status = nil, nil, nil
     end
 end
 
@@ -221,9 +224,10 @@ local function frameScene(page, visualizer, kind, enabled)
         }, false, {}, false)
     end
     local low = graphics and not enabled
+    local width = state.previewWidth
     local rt = mod.lib(renderLib):CreateRenderTarget2D(
         page,
-        low and 260 or 1040,
+        math.floor(width * (low and 0.25 or 1) + 0.5),
         low and 220 or 880,
         2,
         { R = 0, G = 0, B = 0, A = 1 },
@@ -236,24 +240,32 @@ local function frameScene(page, visualizer, kind, enabled)
     component.bCaptureEveryFrame = status
     local image = mod.widget(page, "Image")
     image:SetBrushResourceObject(rt)
-    place(state.panel, image, 0, 0, 1040, 880)
+    place(state.panel, image, 0, 0, width, 880)
     if status then
-        local overlay = place(state.panel, mod.widget(page, "Image"), 0, 0, 1040, 880)
+        local overlay = place(state.panel, mod.widget(page, "Image"), 0, 0, width, 880)
         local name = label(page, "", 30, 742, 260, 38)
         name:SetVisibility(enabled and 3 or 1)
         state.status = { label = name, overlay = overlay, materials = {} }
     elseif graphics then
         label(page, enabled and "Resolution sample: full" or "Resolution sample: retro", 35, 38, 950, 75)
     elseif damage and enabled ~= 0 then
-        backdrop(page, 227, 140, 586, 114)
-        label(page, "Skeleton", 250, 149, 380, 50)
-        if enabled == 2 then
-            state.hit = label(page, "-12", 643, 149, 145, 50, nil, 2)
-        end
-        local bar = mod.widget(page, "ProgressBar")
-        bar:SetFillColorAndOpacity({ R = 0.62, G = 0.065, B = 0.036, A = 1 })
-        state.bar = place(state.panel, bar, 251, 202, 535, 36)
-        state.hp = label(page, "", 251, 201, 535, 48, nil, 1)
+        local zoneClass =
+            previewAsset("/Game/UI/HUD/Widgets/EnemyHealthBar/EnemyStatusZone.EnemyStatusZone_C")
+        local zone = mod.lib("/Script/UMG.Default__WidgetBlueprintLibrary")
+            :Create(page, zoneClass, page:GetOwningPlayer())
+        assert(
+            mod.valid(zone) and mod.valid(zone.EnemyHealthBar_base),
+            "native enemy bar preview unavailable"
+        )
+        local bar = zone.EnemyHealthBar_base
+        bar:PreConstruct(false)
+        bar.EnemyName:SetText(FText("Skeleton"))
+        local frame = bar.BG
+        local size = frame.Slot:GetSize()
+        -- Mount only the art and name row, not the gameplay widget that binds combat events and fades with its target.
+        frame:RemoveFromParent()
+        place(state.panel, frame, (width - size.X) / 2, 202, size.X, size.Y)
+        state.updateEnemyBar = mod.createEnemyBarSample(bar, enabled == 2)
     end
 end
 
@@ -262,8 +274,9 @@ local function mountPanel(page)
     state.panel = mod.widget(page, "CanvasPanel")
     -- Same 1920x1080 design canvas as the native Video page; never overlap its scroll box.
     local slot = host:AddChildToCanvas(state.panel)
-    slot:SetPosition({ X = 818, Y = 100 })
-    slot:SetSize({ X = 1040, Y = 880 })
+    local card = explanations[state.kind] or state.kind == "itemStats"
+    slot:SetPosition({ X = 818 + (card and (state.previewWidth - 1040) / 2 or 0), Y = 100 })
+    slot:SetSize({ X = card and 1040 or state.previewWidth, Y = 880 })
     slot:SetZOrder(10)
     state.panel:SetClipping(1)
     state.panel:SetVisibility(3)
@@ -308,9 +321,12 @@ function mod.updateVideoPreview(page, key, saved)
         state.status.label:SetVisibility(enabled and 3 or 1)
         state.enabled = enabled
     end
-    if kind ~= state.kind or enabled ~= state.enabled then
+    local viewport = mod.lib("/Script/UMG.Default__WidgetLayoutLibrary"):GetViewportSize(page)
+    local width = viewport.Y > 0 and math.max(1040, math.floor(1080 * viewport.X / viewport.Y + 0.5) - 880)
+        or 1040
+    if kind ~= state.kind or enabled ~= state.enabled or width ~= state.previewWidth then
         closePanel()
-        state.kind, state.enabled, state.start = kind, enabled, now
+        state.kind, state.enabled, state.start, state.previewWidth = kind, enabled, now, width
         if not kind then
             return
         end
@@ -350,15 +366,11 @@ function mod.updateVideoPreview(page, key, saved)
             closePanel()
             mod.warn("Video status effect", err)
         end
-    elseif kind == "enemyHpBars" and state.bar then
+    elseif kind == "enemyHpBars" and state.updateEnemyBar then
         local phase = (now - state.start) % 3
         local step = phase < 1 and 0 or (phase < 1 + mod.config.damageSeconds and 1 or 2)
         if step ~= state.lastPhase then
-            state.bar:SetPercent(step == 0 and 1 or 0.7)
-            state.hp:SetText(FText(step == 0 and "40 / 40" or "28 / 40"))
-            if state.hit then
-                state.hit:SetVisibility(step == 1 and 3 or 1)
-            end
+            state.updateEnemyBar(step == 0 and 40 or 28, 40, step == 1 and 12 or nil)
             state.lastPhase = step
         end
     elseif kind == "shimmer" and state.capture then
