@@ -20,9 +20,11 @@ local explanations = {
     },
     travelStride = {
         "Travel Stride",
-        ("After %s %s out of combat, move 25%% faster on the ground and recharge sword dashes twice as fast. Enemy aggro or a combat hit ends the boost. Jump distance stays the same."):format(
+        ("After %s %s out of combat, gain +%s%% ground speed and +%s%% sword-dash recharge rate. Enemy aggro or a combat hit ends the boost. Jump distance stays the same."):format(
             mod.config.travelStrideDelaySeconds,
-            mod.config.travelStrideDelaySeconds == 1 and "second" or "seconds"
+            mod.config.travelStrideDelaySeconds == 1 and "second" or "seconds",
+            mod.config.travelStrideSpeedBonusPercent,
+            mod.config.travelStrideSwordRechargeBonusPercent
         ),
     },
     quickSave = {
