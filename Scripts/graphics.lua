@@ -54,14 +54,7 @@ local function applyGraphicsPreset(world, force)
     local asset = StaticFindObject("/Game/BaseMaterials/Resources/PixelFilter_MPC.PixelFilter_MPC")
     if B.valid(asset) then
         local material = B.lib("/Script/Engine.Default__KismetMaterialLibrary")
-        material:SetScalarParameterValue(world, asset, FName("EnableDither"), 0)
         material:SetScalarParameterValue(world, asset, FName("PixelFilter"), 0)
-        -- Not all installed materials expose the smooth-colour parameter.
-        asset.ScalarParameters:ForEach(function(_, p)
-            if p:get().ParameterName:ToString() == "QD_SmoothColours" then
-                material:SetScalarParameterValue(world, asset, FName("QD_SmoothColours"), 2)
-            end
-        end)
     end
 end
 

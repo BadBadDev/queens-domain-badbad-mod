@@ -125,7 +125,12 @@ end
 nativeSpeedUpdate(100)
 assert(not B.hasTravelStride(player), "a fresh world starts its own quiet period")
 
-B.config = dofile("Scripts/config.lua")
+test.env.io = {
+    open = function(_, mode)
+        return io.open("features.ini", mode)
+    end,
+}
+test.loadModule("options")
 test.loadModule("travelstride")
 nativeSpeedUpdate(200)
 nativeSpeedUpdate(211.99)

@@ -19,25 +19,48 @@ local features = {
     { "quickSave", "Quick Save / Load" },
 }
 local saved, known = {}, {}
+local numericSettings = {
+    screenPercentage = { default = 100, min = 50, max = 200 },
+    damageSeconds = { default = 0.85, min = 0 },
+    travelStrideDelaySeconds = { default = 12, min = 0 },
+}
+for key, setting in pairs(numericSettings) do
+    saved[key] = setting.default
+end
 for _, feature in ipairs(features) do
     known[feature[1]] = feature
     saved[feature[1]] = feature.levels and feature.default or feature.default ~= false
 end
 
-local function parseFeatureSwitches(data)
+local function parseSettings(data)
     local offset, values, positions = 0, {}, {}
     for line in (data .. "\n"):gmatch("([^\n]*)\n") do
         if not line:match("^%s*[;#]") and not line:match("^%s*$") then
-            local key, pos, digit = line:match("^%s*([%w_]+)%s*=%s*()(%d)%s*$")
+            local key, pos, raw = line:match("^%s*([%w_]+)%s*=%s*()(%S+)%s*$")
             local feature = known[key]
+            local setting = numericSettings[key]
+            local number = tonumber(raw)
+            local value
             if
-                feature
-                and (digit == "0" or digit == "1" or (feature.levels and feature.levels[tonumber(digit) + 1]))
+                setting
+                and number
+                and number >= setting.min
+                and number < math.huge
+                and (not setting.max or number <= setting.max)
             then
+                value = number
+            elseif feature and raw:match("^%d$") then
+                if feature.levels and feature.levels[number + 1] then
+                    value = number
+                elseif not feature.levels and (raw == "0" or raw == "1") then
+                    value = raw == "1"
+                end
+            end
+            if value ~= nil then
                 if positions[key] then
                     mod.warn("duplicate setting " .. key, "using last value")
                 end
-                values[key] = feature.levels and tonumber(digit) or digit == "1"
+                values[key] = value
                 positions[key] = offset + pos - 1
             else
                 mod.warn("features.ini: " .. line, "unknown setting or invalid value")
@@ -52,7 +75,7 @@ if file then
     local data, err = file:read("*a")
     file:close()
     if data then
-        local values = parseFeatureSwitches(data)
+        local values = parseSettings(data)
         for key, value in pairs(values) do
             saved[key] = value
         end
@@ -76,7 +99,7 @@ local function saveFeatureSwitch(key, value)
         fileHandle:close()
         return nil, readErr
     end
-    local _, positions = parseFeatureSwitches(data)
+    local _, positions = parseSettings(data)
     -- Change just one byte, preserving other values, comments and CRLF.
     local pos = positions[key]
     local at, seekErr = fileHandle:seek("set", pos or #data)

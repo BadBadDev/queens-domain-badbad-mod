@@ -13,6 +13,22 @@ local function notify(text)
     B.log(text)
 end
 
+local function isDeathScreenOpen(player)
+    local class = StaticFindObject("/Game/UI/Menus/DieUI.DieUI_C")
+    if not B.valid(class) then
+        return false
+    end
+    local widgets = {}
+    B.lib("/Script/UMG.Default__WidgetBlueprintLibrary"):GetAllWidgetsOfClass(player, widgets, class, true)
+    for _, entry in ipairs(widgets) do
+        local widget = entry:get()
+        if B.valid(widget) and widget:IsVisible() then
+            return true
+        end
+    end
+    return false
+end
+
 local function currentGame()
     local pc = FindFirstOf("PlayerController")
     assert(B.valid(pc), "Load a character slot first")
@@ -27,11 +43,15 @@ local function currentGame()
         "Save at a Crystal Monument first"
     )
     assert(
-        not gi.InCutscene and not gi.InPickupAnim and not player.IsDead and not player.Teleporting,
-        "Finish the current transition or pickup first; quick save/load is unavailable while dead"
+        not player.IsDead and not isDeathScreenOpen(player),
+        "Unavailable on the death screen; continue first"
+    )
+    assert(
+        not gi.InCutscene and not gi.InPickupAnim and not player.Teleporting,
+        "Finish the current transition or pickup first"
     )
     assert(not gp:IsGamePaused(player), "Close the pause menu first")
-    assert(not gi.SuspendSaveCurrentlyWriting and gi.SuspendIsBlocked <= 0, "Saving is currently blocked")
+    assert(not gi.SuspendSaveCurrentlyWriting, "A save is being written; wait for it to finish")
 
     local index = gi:GetActiveSaveSlotIndex()
     assert(index >= 0 and index < 5 and index == math.floor(index), "No valid player slot")
@@ -75,6 +95,8 @@ local function readSnapshot(game, path)
 end
 
 local function pinProgress(game)
+    -- This counter blocks creating a suspend save, not reading a previously verified pin.
+    assert(game.gi.SuspendIsBlocked <= 0, "Saving is currently blocked")
     local gp, player = game.gp, game.player
     assert(not player.SafeLocationIsForcedMidair, "No safe grounded resume point yet")
     local location = player.LastSafeLocation.Translation
