@@ -1,6 +1,8 @@
 -- Shortens peaceful ground travel without extending a running jump or altering dash distance.
 local B = ...
-local quietSeconds, GROUND_FACTOR = B.config.travelStrideDelaySeconds, 1.25
+local quietSeconds = B.config.travelStrideDelaySeconds
+local groundFactor = 1 + B.config.travelStrideSpeedBonusPercent / 100
+local extraRechargeFactor = B.config.travelStrideSwordRechargeBonusPercent / 100
 local PLAYER = "/Game/Player/FS_PlayerChar.FS_PlayerChar_C:"
 local ENEMY = "/Game/Enemies/EnemyBase.EnemyBase_C:"
 local SWORD = "/Game/Player/Assets/Blueprints/FlyingSwordChargeLogic.FlyingSwordChargeLogic_C:"
@@ -141,9 +143,9 @@ local function updateStrideAfterNativeSpeed(context)
     end
     -- TickMoveSpeed has just recomputed the vanilla cap from equipment, run mode and debuffs.
     local base = move.MaxWalkSpeed
-    if base > 0 then
+    if base > 0 and groundFactor > 1 then
         state.groundCap = base
-        move.MaxWalkSpeed = base * GROUND_FACTOR
+        move.MaxWalkSpeed = base * groundFactor
         player.LastGroundedHSpeed = math.min(player.LastGroundedHSpeed, base)
     end
 end
@@ -175,7 +177,7 @@ signals[#signals + 1] = B.hook(PLAYER .. "BeginWindDash", suspendGroundSpeed)
 B.hook(PLAYER .. "TickMoveSpeed", updateStrideAfterNativeSpeed)
 
 B.hook(SWORD .. "ReceiveTick", function(context, delta)
-    if not state.active or replayingRecharge then
+    if not state.active or replayingRecharge or extraRechargeFactor == 0 then
         return
     end
     local charge = context:get()
@@ -193,7 +195,7 @@ B.hook(SWORD .. "ReceiveTick", function(context, delta)
     -- capacity, airborne queue and charge-gained events, including partial charges.
     replayingRecharge = true
     local ok, err = pcall(function()
-        charge:ReceiveTick(delta:get())
+        charge:ReceiveTick(delta:get() * extraRechargeFactor)
     end)
     replayingRecharge = false
     if not ok then

@@ -4,6 +4,8 @@ local support = require("tests.support")
 local obj, ref = support.object, support.ref
 local B, hooks = test.api, test.hooks
 B.config.travelStrideDelaySeconds = 2.5
+B.config.travelStrideSpeedBonusPercent = 50
+B.config.travelStrideSwordRechargeBonusPercent = 25
 local world = obj()
 local function getWorld()
     return world
@@ -73,9 +75,9 @@ nativeSpeedUpdate(12)
 nativeSpeedUpdate(14.49)
 assert(not B.hasTravelStride(player))
 nativeSpeedUpdate(14.5)
-assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 500)
+assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 600)
 nativeSpeedUpdate(20.1, 300)
-assert(move.MaxWalkSpeed == 375, "use the current native cap, including debuffs")
+assert(move.MaxWalkSpeed == 450, "use the current native cap, including debuffs")
 move.Velocity = { X = 225, Y = 300, Z = 480 }
 player.LastGroundedHSpeed = 375
 hooks.Jump(ref(player))
@@ -96,10 +98,10 @@ local sword = obj({
     end,
 })
 sword:ReceiveTick(0.25)
-assert(progress == 0.5, "airborne sword recharge continues at 2x, not recursively")
+assert(progress == 0.3125, "airborne sword recharge includes only the configured extra 25%")
 grounded = true
 nativeSpeedUpdate(21)
-assert(move.MaxWalkSpeed == 500, "landing must not restart the quiet timer")
+assert(move.MaxWalkSpeed == 600, "landing must not restart the quiet timer")
 grounded = false
 move.Velocity = { X = 500, Y = 0, Z = -15 }
 hooks.K2_OnMovementModeChanged(ref(player))
@@ -110,7 +112,7 @@ enemy.bAggrod = true
 hooks.Aggrod(ref(enemy))
 assert(not B.hasTravelStride(player) and move.MaxWalkSpeed == 400)
 sword:ReceiveTick(0.25)
-assert(progress == 0.75, "combat must immediately restore ordinary recharge without losing progress")
+assert(progress == 0.5625, "combat must immediately restore ordinary recharge without losing progress")
 nativeSpeedUpdate(40)
 assert(not B.hasTravelStride(player), "waiting while an enemy is still alert is not out of combat")
 enemy.bDead = true
@@ -137,3 +139,15 @@ nativeSpeedUpdate(211.99)
 assert(not B.hasTravelStride(player), "the shipped default must wait the full 12 seconds")
 nativeSpeedUpdate(212)
 assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 500)
+progress = 0
+sword:ReceiveTick(0.25)
+assert(progress == 0.5, "default recharge rate is double")
+
+B.config.travelStrideSpeedBonusPercent = 0
+B.config.travelStrideSwordRechargeBonusPercent = 0
+test.loadModule("travelstride")
+nativeSpeedUpdate(300)
+nativeSpeedUpdate(312)
+assert(B.hasTravelStride(player) and move.MaxWalkSpeed == 400)
+sword:ReceiveTick(0.25)
+assert(progress == 0.75, "zero recharge bonus leaves the native tick unchanged")

@@ -23,6 +23,8 @@ local numericSettings = {
     screenPercentage = { default = 100, min = 50, max = 200 },
     damageSeconds = { default = 0.85, min = 0 },
     travelStrideDelaySeconds = { default = 12, min = 0 },
+    travelStrideSpeedBonusPercent = { default = 25, min = 0 },
+    travelStrideSwordRechargeBonusPercent = { default = 100, min = 0 },
 }
 for key, setting in pairs(numericSettings) do
     saved[key] = setting.default
