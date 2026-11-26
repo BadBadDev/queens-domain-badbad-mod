@@ -2,7 +2,7 @@
 
 I made BadBad Mod for the way I like to play Queen's Domain. It brings together my own quality-of-life tweaks and features I liked from other mods. I'm sharing it in case you like playing this way too. 🙂
 
-**v1.4.4** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.4.5** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -46,6 +46,8 @@ Save at a **Crystal Monument** at least once in the current save slot. Then use 
 **What F5 saves:** When you press F5, this mod asks the game to record your current player status, then writes a separate copy of the active save in the game's own suspend-save format. This captures your HP, inventory and saved world changes. For your position, it uses the game's last safe, walkable spot and the level-loading state that goes with it. If you press F5 during a jump, don't expect to reload in midair.
 
 **What F9 restores:** Pressing F9 reopens the map using your quicksave instead of the game's newest recovery save. A later autosave won't replace your F5 point, and loading it leaves both native recovery files untouched. This restores **progress, not a fight in motion**: the game doesn't save every enemy's exact state, a projectile in flight or a moving platform's position.
+
+If F5 reports **quicksave unchanged**, it couldn't confirm which area to restore. Nothing was loaded, and your previous quicksave is still intact. Try again on walkable ground after the area finishes loading. F9 refuses an incomplete ruins quicksave rather than loading an empty world.
 
 Use F9 in the same persistent map, not from the title or death screen. Menus, cutscenes, pickups, teleports and the game's save restrictions can block a request; the on-screen message or `ue4ss\UE4SS.log` gives more details.
 

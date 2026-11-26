@@ -5,11 +5,11 @@ local SLOT = "/Game/Blueprints/SaveSystem/FS_SaveSlot.FS_SaveSlot_C"
 local GP = "/Script/Engine.Default__GameplayStatics"
 local SLOT_MARKER = FName("BBM_ManualSnapshot_V1")
 local pendingLoad
-local message, messageUntil, notice, noticeHud, displayedMessage
+local message, notice, noticeHud
 local lastPress = -math.huge
 
 local function notify(text)
-    message, messageUntil = text, os.clock() + 4
+    message = { text = text, expires = os.clock() + 4 }
     B.log(text)
 end
 
@@ -73,33 +73,30 @@ local function currentGame()
     }
 end
 
-local function slotName(path)
-    return "FULLPATH:" .. path
+local function hasResumeRegion(level, streaming)
+    -- The main ruins map can load its base scenery without loading the region that populates it.
+    return level ~= "/Game/RuinsLevel/Maps/Ruins_Level_00"
+        or #streaming.SafeLocLevelListStack > 0
+        or #streaming.SafeLocTriggerLevelListStack > 0
 end
 
-local function readSnapshot(game, path)
-    local file = assert(io.open(path, "rb"), "Missing or unreadable quicksave")
-    local header = file:read(4)
-    file:close()
-    assert(header == "GVAS", "Invalid quicksave file")
-    local save = game.gp:LoadGameFromSlot(slotName(path), 0)
-    assert(B.valid(save) and save:IsA(B.lib(SLOT)) and save.IsSuspendSave, "Missing or unreadable quicksave")
-    assert(
-        save.NamedSaveData:Contains(SLOT_MARKER)
-            and save.NamedSaveData:Find(SLOT_MARKER):get() == game.index + 1,
-        "Not a BBM quicksave for this slot"
-    )
-    assert(save.SaveVersion == game.active.SaveVersion, "Quicksave version mismatch")
-    assert(save.SaveLevel:ToString() == game.level, "Quicksave belongs to another gameplay map")
-    return save
+-- Copy the two cached stacks that belong to LastSafeLocation. UE4SS's temporary
+-- struct returned by GetSafeLocationSuspendState can lose its nested arrays.
+local function copyRegionStack(stack)
+    local copy = {}
+    for i = 1, #stack do
+        local entry = stack[i]
+        assert(B.valid(entry.List), "Invalid safe resume region; quicksave unchanged")
+        copy[i] = { List = entry.List, Priority = entry.Priority, bTrigger = entry.bTrigger }
+    end
+    return copy
 end
 
-local function pinProgress(game)
-    -- This counter blocks creating a suspend save, not reading a previously verified pin.
-    assert(game.gi.SuspendIsBlocked <= 0, "Saving is currently blocked")
-    local gp, player = game.gp, game.player
+local function captureResumeState(game)
+    local player = game.player
     assert(not player.SafeLocationIsForcedMidair, "No safe grounded resume point yet")
-    local location = player.LastSafeLocation.Translation
+    local transform = player.LastSafeLocation
+    local location = transform.Translation
     local function finite(n)
         return type(n) == "number" and math.abs(n) < math.huge
     end
@@ -111,67 +108,139 @@ local function pinProgress(game)
         "No valid safe position yet"
     )
     assert(player:SafeZoneProject(location, {}), "The game's safe position is not on loaded walkable ground")
-    local source, nextPin, previous = game.pin .. ".work", game.pin .. ".new", game.pin .. ".prev"
-    -- Clone the progression object through Unreal's serializer. Patch only that copy,
-    -- never the monument file or the two suspend files used by the game.
-    player:WriteStatusToSave()
-    assert(gp:SaveGameToSlot(game.active, slotName(source), 0), "Could not stage progression")
-    local clone = gp:LoadGameFromSlot(slotName(source), 0)
-    assert(B.valid(clone) and clone:IsA(B.lib(SLOT)), "Could not read back staged progression")
     local manager = B.lib("/Script/QueensDomain.Default__FS_LevelManager"):GetLevelManager(player)
     assert(B.valid(manager), "Level streaming is not ready")
-    clone.SuspendLocation = player.LastSafeLocation
-    clone.SuspendPositionIsForcedMidair = false
-    clone.LevelLoadingSuspendState = manager:GetSafeLocationSuspendState()
+    local streaming = {
+        SafeLocLevelListStack = copyRegionStack(manager.SafeLocLevelListStack),
+        SafeLocTriggerLevelListStack = copyRegionStack(manager.SafeLocTriggerLevelListStack),
+    }
+    assert(hasResumeRegion(game.level, streaming), "No safe resume region yet; quicksave unchanged")
     local music = {}
     if B.valid(game.gi.MusicController) then
         for i, entry in ipairs(game.gi.MusicController:GetSafeLocationSuspendState()) do
             music[i] = entry:get()
         end
     end
-    clone.MusicAreaSuspendState = music
+    return { location = transform, streaming = streaming, music = music }
+end
+
+local function readSnapshot(game, path)
+    local file = assert(io.open(path, "rb"), "Missing or unreadable quicksave")
+    local header = file:read(4)
+    file:close()
+    assert(header == "GVAS", "Invalid quicksave file")
+    local save = game.gp:LoadGameFromSlot("FULLPATH:" .. path, 0)
+    assert(B.valid(save) and save:IsA(B.lib(SLOT)) and save.IsSuspendSave, "Missing or unreadable quicksave")
+    assert(
+        save.NamedSaveData:Contains(SLOT_MARKER)
+            and save.NamedSaveData:Find(SLOT_MARKER):get() == game.index + 1,
+        "Not a BBM quicksave for this slot"
+    )
+    assert(save.SaveVersion == game.active.SaveVersion, "Quicksave version mismatch")
+    assert(save.SaveLevel:ToString() == game.level, "Quicksave belongs to another gameplay map")
+    return save
+end
+
+local function stageSnapshot(game, path, resume)
+    -- Only the detached copy gets suspend data. Both writes target the same private staging file.
+    game.player:WriteStatusToSave()
+    local gp, slot = game.gp, "FULLPATH:" .. path
+    assert(gp:SaveGameToSlot(game.active, slot, 0), "Could not stage progression")
+    local clone = gp:LoadGameFromSlot(slot, 0)
+    assert(B.valid(clone) and clone:IsA(B.lib(SLOT)), "Could not read back staged progression")
+    clone.SuspendLocation = resume.location
+    clone.SuspendPositionIsForcedMidair = false
+    local destination = clone.LevelLoadingSuspendState
+    for field, stack in pairs(resume.streaming) do
+        destination[field] = stack
+    end
+    clone.MusicAreaSuspendState = resume.music
     clone.SaveLevel = FName(game.level)
     clone.IsSuspendSave = true
     clone.NamedSaveData:Add(SLOT_MARKER, game.index + 1)
-    assert(gp:SaveGameToSlot(clone, slotName(nextPin), 0), "Could not write the new quicksave")
-    local verified = readSnapshot(game, nextPin)
-    local expected, actual = clone.SuspendLocation.Translation, verified.SuspendLocation.Translation
+    assert(gp:SaveGameToSlot(clone, slot, 0), "Could not write the new quicksave")
+    return clone.CurrentPlayerHealth
+end
+
+local function matchesRegionStack(expected, actual)
+    if #expected ~= #actual then
+        return false
+    end
+    for i, entry in ipairs(expected) do
+        local stored = actual[i]
+        if
+            not B.valid(stored.List)
+            or stored.List:GetAddress() ~= entry.List:GetAddress()
+            or stored.Priority ~= entry.Priority
+            or stored.bTrigger ~= entry.bTrigger
+        then
+            return false
+        end
+    end
+    return true
+end
+
+local function verifySnapshot(save, resume, health)
+    for field, stack in pairs(resume.streaming) do
+        assert(
+            matchesRegionStack(stack, save.LevelLoadingSuspendState[field]),
+            "Could not verify the region in the new save; quicksave unchanged"
+        )
+    end
+    local expected, actual = resume.location.Translation, save.SuspendLocation.Translation
     assert(
-        verified.CurrentPlayerHealth == clone.CurrentPlayerHealth
+        save.CurrentPlayerHealth == health
             and actual.X == expected.X
             and actual.Y == expected.Y
             and actual.Z == expected.Z,
         "Quicksave verification failed"
     )
-    -- Windows cannot rename over a file. Retain one generation, including through
-    -- an interruption between these two renames. Never stage into the current pin.
-    local hasPin = gp:DoesSaveGameExist(slotName(game.pin), 0)
+end
+
+local function exists(game, path)
+    return game.gp:DoesSaveGameExist("FULLPATH:" .. path, 0)
+end
+
+local function promoteSnapshot(game, staged)
+    -- Windows can't rename over an existing file. Keep one generation for rollback.
+    local pin, previous = game.pin, game.pin .. ".prev"
+    local hasPin = exists(game, pin)
     if hasPin then
-        if gp:DoesSaveGameExist(slotName(previous), 0) then
+        if exists(game, previous) then
             assert(os.remove(previous))
         end
-        assert(os.rename(game.pin, previous))
+        assert(os.rename(pin, previous))
     end
-    local ok, err = os.rename(nextPin, game.pin)
+    local ok, err = os.rename(staged, pin)
     if not ok then
         if hasPin then
-            assert(os.rename(previous, game.pin), "Could not roll back; previous pin is in .prev")
+            assert(os.rename(previous, pin), "Could not roll back; previous pin is in .prev")
         end
         error("Could not promote quicksave: " .. tostring(err))
     end
-    if not gp:DeleteGameInSlot(slotName(source), 0) then
-        B.log("Could not clean up private .work file")
-    end
+end
+
+local function pinProgress(game)
+    assert(game.gi.SuspendIsBlocked <= 0, "Saving is currently blocked")
+    local resume = captureResumeState(game)
+    local staged = game.pin .. ".new"
+    local health = stageSnapshot(game, staged, resume)
+    verifySnapshot(readSnapshot(game, staged), resume, health)
+    promoteSnapshot(game, staged)
     notify(("Quick saved - slot %d"):format(game.index + 1))
 end
 
 local function loadPinnedProgress(game)
     local path = game.pin
-    if not game.gp:DoesSaveGameExist(slotName(path), 0) then
+    if not exists(game, path) then
         path = path .. ".prev"
-        assert(game.gp:DoesSaveGameExist(slotName(path), 0), "No quicksave for this slot")
+        assert(exists(game, path), "No quicksave for this slot")
     end
     local pin = readSnapshot(game, path)
+    assert(
+        hasResumeRegion(game.level, pin.LevelLoadingSuspendState),
+        "Quicksave has no resume region; load cancelled"
+    )
     pin.NamedSaveData:Remove(SLOT_MARKER)
     local address = pin:GetAddress()
     local previousBase = game.gi.BaseActiveSave
@@ -215,30 +284,28 @@ local restoreHookReady = B.hook(PLAYER .. ":RestoreSuspend", function(ctx)
     end
 end)
 
-local function request(action)
-    ExecuteInGameThread(function()
-        local now = os.clock()
-        if now - lastPress < 0.4 then
-            return
-        end
-        lastPress = now
-        local ok, err = pcall(function()
-            assert(not pendingLoad, "A quick load is already pending")
-            assert(restoreHookReady(), "Save system not ready yet")
-            action(currentGame())
+local function bindKey(key, prefix, action)
+    RegisterKeyBind(key, function()
+        ExecuteInGameThread(function()
+            local now = os.clock()
+            if now - lastPress < 0.4 then
+                return
+            end
+            lastPress = now
+            local ok, err = pcall(function()
+                assert(not pendingLoad, "A quick load is already pending")
+                assert(restoreHookReady(), "Save system not ready yet")
+                action(currentGame())
+            end)
+            if not ok then
+                notify(prefix .. (tostring(err):match(":%d+: (.*)") or tostring(err)))
+            end
         end)
-        if not ok then
-            notify("Quick save/load: " .. (tostring(err):match(":%d+: (.*)") or tostring(err)))
-        end
     end)
 end
 
-RegisterKeyBind(Key.F5, function()
-    request(pinProgress)
-end)
-RegisterKeyBind(Key.F9, function()
-    request(loadPinnedProgress)
-end)
+bindKey(Key.F5, "Quick save: ", pinProgress)
+bindKey(Key.F9, "Quick load: ", loadPinnedProgress)
 
 B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", function(ctx)
     if pendingLoad and os.clock() > pendingLoad.deadline then
@@ -248,11 +315,11 @@ B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", function(ctx)
     if not message then
         return
     end
-    if os.clock() >= messageUntil then
+    if os.clock() >= message.expires then
         if B.valid(notice) then
             notice:SetVisibility(1)
         end
-        message, displayedMessage = nil, nil
+        message = nil
         return
     end
     local hud = ctx:get()
@@ -271,14 +338,15 @@ B.hook("/Game/UI/HUD/FS_PlayerHUD.FS_PlayerHUD_C:Tick", function(ctx)
         slot:SetAlignment({ X = 0.5, Y = 0 })
         slot:SetPosition({ X = 0, Y = 26 })
         slot:SetZOrder(200)
-        noticeHud, displayedMessage = hud:GetAddress(), nil
+        noticeHud = hud:GetAddress()
+        message.shown = false
     end
-    if displayedMessage ~= message then
-        notice:SetText(FText(message))
+    if not message.shown then
+        notice:SetText(FText(message.text))
         notice:SetVisibility(3)
-        displayedMessage = message
+        message.shown = true
     end
 end)
 table.insert(B.reset, function()
-    notice, noticeHud, displayedMessage = nil, nil, nil
+    notice, noticeHud = nil, nil
 end)
