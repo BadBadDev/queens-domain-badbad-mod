@@ -60,6 +60,12 @@ local player = obj({
     end,
 })
 local controller = obj({ Pawn = player })
+local deathScreenVisible = false
+local deathScreen = obj({
+    IsVisible = function()
+        return deathScreenVisible
+    end,
+})
 local function savePath(name)
     return "FULLPATH:C:\\TestSave\\" .. name
 end
@@ -84,6 +90,14 @@ local gp = {
     end,
 }
 test.api.lib = function(path)
+    if path:match("WidgetBlueprintLibrary$") then
+        return {
+            GetAllWidgetsOfClass = function(_, owner, out, _, topOnly)
+                assert(owner == player and topOnly)
+                out[1] = ref(deathScreen)
+            end,
+        }
+    end
     if path:match("GameplayStatics$") then
         return gp
     end
@@ -120,6 +134,10 @@ end
 test.env.FindFirstOf = function()
     return controller
 end
+test.env.StaticFindObject = function(path)
+    assert(path == "/Game/UI/Menus/DieUI.DieUI_C")
+    return obj()
+end
 test.env.FName = function(name)
     return name
 end
@@ -143,6 +161,20 @@ end
 
 gi.SuspendIsBlocked = 1
 press("F5", "blocked")
+player.IsDead = true
+press("F9", "death screen")
+player.IsDead, deathScreenVisible = false, true
+press("F9", "death screen")
+deathScreenVisible = false
+gi.SuspendSaveCurrentlyWriting = true
+press("F9", "being written")
+assert(opened == 0 and gi.ActiveSaveSlot == real and gi.BaseActiveSave == real)
+gi.SuspendSaveCurrentlyWriting = false
+press("F9", "Loading quicksave")
+assert(opened == 1 and gi.SuspendIsBlocked == 1)
+test.hooks.RestoreSuspend(ref(player))
+assert(notifications[#notifications] == "Quick loaded - slot 2")
+opened, gi.ActiveSaveSlot, gi.BaseActiveSave = 0, real, real
 gi.SuspendIsBlocked = 0
 slot = 0
 press("F9", "No quicksave")

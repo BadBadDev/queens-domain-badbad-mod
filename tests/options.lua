@@ -17,7 +17,8 @@ local function readIni()
     return s
 end
 local testResult, testError = pcall(function()
-    local ini = "; test\r\ngraphics=0\r\ndrag = 1\r\ninventoryStats=0\r\n"
+    local ini =
+        "; test\r\ngraphics=0\r\nscreenPercentage=125\r\ndamageSeconds=1.75\r\ntravelStrideDelaySeconds=0\r\ndrag = 1\r\ninventoryStats=0\r\n"
     writeIni(ini)
     local function openTestIni(_, mode)
         return io.open(tmp, mode)
@@ -160,6 +161,11 @@ local testResult, testError = pcall(function()
     end
     test.loadModule("options")
     assert(B.config.drag and not B.config.graphics and not B.config.inventoryStats)
+    assert(
+        B.config.screenPercentage == 125
+            and B.config.damageSeconds == 1.75
+            and B.config.travelStrideDelaySeconds == 0
+    )
     hooks.Open(ref(page))
     hooks.Open(ref(page))
     assert(#optionRows == 10)
@@ -282,6 +288,23 @@ local testResult, testError = pcall(function()
     selector.CurrentValue = 0
     hooks.Close(ref(page))
     assert(B.config.shimmer == 0 and readIni() == "shimmer=0\n")
+
+    writeIni("screenPercentage=201\ndamageSeconds=-1\ntravelStrideDelaySeconds=1e999\n")
+    local warnings = {}
+    B.warn = function(key)
+        warnings[key] = true
+    end
+    test.loadModule("options")
+    assert(
+        B.config.screenPercentage == 100
+            and B.config.damageSeconds == 0.85
+            and B.config.travelStrideDelaySeconds == 12
+    )
+    assert(
+        warnings["features.ini: screenPercentage=201"]
+            and warnings["features.ini: damageSeconds=-1"]
+            and warnings["features.ini: travelStrideDelaySeconds=1e999"]
+    )
 end)
 os.remove(tmp)
 assert(testResult, testError)

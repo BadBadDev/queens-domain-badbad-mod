@@ -2,7 +2,7 @@
 
 I made BadBad Mod for the way I like to play Queen's Domain. It brings together my own quality-of-life tweaks and features I liked from other mods. I'm sharing it in case you like playing this way too. 🙂
 
-**v1.4.2** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
+**v1.4.3** · Tested with Queen's Domain **1.01.07** on Windows and [UE4SS v4.0.0](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/v4.0.0) · [Installation](#install-or-remove)
 
 ## Features
 
@@ -17,7 +17,7 @@ I made BadBad Mod for the way I like to play Queen's Domain. It brings together 
 | **Status effect names** | Active effects stack above the usable-item icon at the bottom left. Names disappear as each effect ends. |
 | **Widescreen** | The title screen, Game Over screen, settings menus, and Status & Inventory use the extra width without stretching controls. In gameplay, the camera, HP/stamina, compass and usable-item icon adapt to the viewport. Status borders such as Poison expand to the edges on ultrawide. |
 | **[Quick Save / Load](#quick-save--load)** | **F5** saves your progress separately for the current slot. **F9** reloads it without quitting, even if the game has made a newer recovery save. |
-| **Travel Stride** | **Off by default** for players who prefer the game's original pace. Turn it on in **Options > Video** and restart. After a delay out of combat (12 seconds by default), ground speed increases by 25% and sword dashes recharge twice as fast. Set `travelStrideDelaySeconds` in [config.lua](Scripts/config.lua) to change the delay. Jump distance stays the same. Enemy aggro or a combat hit removes the buff and restarts the timer. |
+| **Travel Stride** | **Off by default** for players who prefer the game's original pace. Turn it on in **Options > Video** and restart. After a delay out of combat (12 seconds by default), ground speed increases by 25% and sword dashes recharge twice as fast.
 
 ### Reading the numbers (Examples)
 
@@ -33,6 +33,9 @@ Highlight a setting to see a preview or a short description.
 
 ## Quick Save / Load
 
+> [!WARNING]
+> Quick Save / Load uses the game’s suspend-save system. It restores progress, not the exact moment you pressed F5, and OH BOY CAN IT FAIL. Do not rely on quicksaves alone: keep saving at Crystal Monuments as often as you see fit.
+
 Save at a **Crystal Monument** at least once in the current save slot. Then use these keys during gameplay:
 
 | Key | Action |
@@ -46,7 +49,7 @@ Save at a **Crystal Monument** at least once in the current save slot. Then use 
 
 Use F9 in the same persistent map, not from the title or death screen. Menus, cutscenes, pickups, teleports and the game's save restrictions can block a request; the on-screen message or `ue4ss\UE4SS.log` gives more details.
 
-Your monument save stays untouched. Each slot keeps `BBM_Quick_World<N>.sav` and one previous copy (`.sav.prev`) beside `World<N>.sav`. If you delete a character and reuse its save slot number, delete both of its quicksave files too. Back up your saves before first use and disable any other mod bound to F5 or F9.
+Your monument save stays untouched. Each slot keeps `BBM_Quick_World<N>.sav` and one previous copy (`.sav.prev`) beside `World<N>.sav`. If you delete a character and reuse its save slot number, delete both of its quicksave files too. Disable any other mod bound to F5 or F9.
 
 ## Install or remove
 

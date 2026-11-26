@@ -22,7 +22,7 @@ If invoked without a task, orient the user: report the actual branch, latest loc
 | Module loading, hooks, world resets | [main.lua](../../../Scripts/main.lua) |
 | Settings, mode persistence, focus, section heading | [options.lua](../../../Scripts/options.lua), [features.ini](../../../features.ini), [options test](../../../tests/options.lua) |
 | Right-hand Video previews and explanatory panels | [videopreview.lua](../../../Scripts/videopreview.lua) |
-| Graphics preset, screen percentage, ultrawide | [graphics.lua](../../../Scripts/graphics.lua), [config.lua](../../../Scripts/config.lua), [widescreen.lua](../../../Scripts/widescreen.lua) |
+| Graphics preset, screen percentage, ultrawide | [graphics.lua](../../../Scripts/graphics.lua), [features.ini](../../../features.ini), [widescreen.lua](../../../Scripts/widescreen.lua) |
 | Pickup effects and preview herb | [shimmer.lua](../../../Scripts/shimmer.lua) |
 | HP bars, damage, status label positions | [monsterhealthbar.lua](../../../Scripts/monsterhealthbar.lua), [statusnames.lua](../../../Scripts/statusnames.lua) |
 | Item calculations, native inventory rows, drag to equip | [itemstats.lua](../../../Scripts/itemstats.lua), [iteminfo.lua](../../../Scripts/iteminfo.lua), [drag.lua](../../../Scripts/drag.lua) |
